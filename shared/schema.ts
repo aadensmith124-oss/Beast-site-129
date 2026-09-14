@@ -390,6 +390,7 @@ export const cryptoPayments = pgTable("crypto_payments", {
   orderId: integer("order_id").references(() => orders.id),
   checkoutUrl: text("checkout_url"),
   metadata: text("metadata"),
+  settledAt: timestamp("settled_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

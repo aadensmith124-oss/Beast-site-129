@@ -7,6 +7,7 @@ import { api } from "../shared/routes.js";
 import { z } from "zod";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { createNowPaymentsInvoice, getNowPaymentsInvoice, mapNowPaymentsStatus, verifyNowPaymentsWebhook } from "./nowpayments.js";
+import { settleCryptoPayment } from "./crypto-settlement.js";
 import { hashPassword, comparePassword } from "./auth.js";
 import { cryptoPayments, orders, orderItems, verifications, variants, userIps, users, mails, mailReads, discountCodes, transactions, stockItems, cards, achs, products, insertAnnouncementSchema } from "../shared/schema.js";
 import { db } from "./db.js";
@@ -1893,7 +1894,7 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Payment not found" });
       }
 
-      if (localPayment.status === "completed") {
+       if (localPayment.status === "completed" && localPayment.settledAt) {
         return res.json({ status: "completed", amount: localPayment.amount, purpose: localPayment.purpose, orderId: localPayment.orderId });
       }
 
@@ -1908,15 +1909,19 @@ export async function registerRoutes(
             .where(and(eq(cryptoPayments.id, localPayment.id), ne(cryptoPayments.status, "completed")))
             .returning();
 
-          if (newStatus === "completed" && updated) {
-            await processCryptoCompletion(localPayment);
+           if (newStatus === "completed" && updated) {
+             await settleCryptoPayment(localPayment.id);
           }
           if ((newStatus === "failed" || newStatus === "expired") && updated && localPayment.purpose === "order" && localPayment.orderId) {
             await storage.cancelPendingOrder(localPayment.orderId);
           }
         }
 
-        res.json({ status: newStatus, amount: localPayment.amount, purpose: localPayment.purpose, orderId: localPayment.orderId });
+         const status = localPayment.status === "completed" ? "completed" : newStatus;
+         if (status === "completed") {
+           await settleCryptoPayment(localPayment.id);
+         }
+         res.json({ status, amount: localPayment.amount, purpose: localPayment.purpose, orderId: localPayment.orderId });
       } catch {
         res.json({ status: localPayment.status, amount: localPayment.amount });
       }
@@ -1936,7 +1941,12 @@ export async function registerRoutes(
       const sig = req.headers["x-nowpayments-sig"] as string || "";
       const ipnSecret = process.env.NOWPAYMENTS_IPN_SECRET;
 
-      if (ipnSecret && (!sig || !verifyNowPaymentsWebhook(body, sig))) {
+      if (!ipnSecret) {
+        console.error("NOWPayments IPN: NOWPAYMENTS_IPN_SECRET is not configured");
+        return res.status(503).json({ received: false });
+      }
+
+      if (!sig || !verifyNowPaymentsWebhook(body, sig)) {
         console.warn("NOWPayments IPN: missing or invalid signature");
         return res.status(200).json({ received: true });
       }
@@ -1961,7 +1971,7 @@ export async function registerRoutes(
         return res.status(200).json({ received: true });
       }
 
-      if (payment.status === "completed") {
+      if (payment.status === "completed" && payment.settledAt) {
         return res.status(200).json({ received: true, alreadyProcessed: true });
       }
 
@@ -1973,7 +1983,9 @@ export async function registerRoutes(
         .returning();
 
       if (newStatus === "completed" && updated) {
-        await processCryptoCompletion(payment);
+        await settleCryptoPayment(payment.id);
+      } else if (payment.status === "completed") {
+        await settleCryptoPayment(payment.id);
       }
       if ((newStatus === "failed" || newStatus === "expired") && updated && payment.purpose === "order" && payment.orderId) {
         await storage.cancelPendingOrder(payment.orderId);
@@ -1985,29 +1997,6 @@ export async function registerRoutes(
       res.status(200).json({ received: true });
     }
   });
-
-  async function processCryptoCompletion(payment: typeof cryptoPayments.$inferSelect) {
-    if (payment.purpose === "order" && payment.orderId) {
-      await storage.fulfillPendingOrder(payment.orderId);
-      await storage.createTransactionWithMethod(
-        payment.userId,
-        -payment.amount,
-        "purchase",
-        `Crypto order payment ($${(payment.amount / 100).toFixed(2)})`,
-        "NOWPayments"
-      );
-    } else {
-      await storage.updateUserBalance(payment.userId, payment.amount);
-      await storage.updateProtectedBalance(payment.userId, payment.amount);
-      await storage.createTransactionWithMethod(
-        payment.userId,
-        payment.amount,
-        "deposit",
-        `Crypto deposit ($${(payment.amount / 100).toFixed(2)})`,
-        "NOWPayments"
-      );
-    }
-  }
 
   // ── Payment method config (public) ───────────────────────────────────────
   app.get("/api/payment-methods", async (_req, res) => {

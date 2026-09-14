@@ -1,4 +1,5 @@
 const NOWPAYMENTS_API_BASE = "https://api.nowpayments.io/v1";
+import { createHmac, timingSafeEqual } from "crypto";
 
 function getApiKey(): string {
   const key = process.env.NOWPAYMENTS_API_KEY;
@@ -86,12 +87,14 @@ export function verifyNowPaymentsWebhook(body: Record<string, any>, signature: s
   if (!secret) return false; // Fail closed — require secret to be configured
 
   try {
-    const { createHmac } = require("crypto");
     const sorted = JSON.stringify(
       Object.keys(body).sort().reduce((acc: Record<string, any>, k) => { acc[k] = body[k]; return acc; }, {})
     );
     const expected = createHmac("sha512", secret).update(sorted).digest("hex");
-    return expected === signature;
+    const expectedBuffer = Buffer.from(expected, "utf8");
+    const signatureBuffer = Buffer.from(signature, "utf8");
+    return expectedBuffer.length === signatureBuffer.length
+      && timingSafeEqual(expectedBuffer, signatureBuffer);
   } catch {
     return false;
   }

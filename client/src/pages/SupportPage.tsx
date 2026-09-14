@@ -194,7 +194,7 @@ export default function SupportPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-7 sm:py-10">
+      <main className="ticket-ui flex-1 max-w-2xl mx-auto w-full px-4 py-7 sm:py-10">
         {view === "list" && (
           <div className="space-y-6">
             <PageHeading title="My Support Tickets" description="View and track all your support tickets" />

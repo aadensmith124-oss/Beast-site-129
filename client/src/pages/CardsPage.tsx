@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Search, ShoppingCart, ChevronDown, X, Loader2, SlidersHorizontal, Hourglass, ShieldCheck } from "lucide-react";
+import { Search, ShoppingCart, ChevronDown, X, Loader2, SlidersHorizontal } from "lucide-react";
 import { useLocation, Redirect } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -91,74 +91,6 @@ function formatBank(binData: any): string {
   const b = binData.bank;
   if (!b || b === "Unknown") return "";
   return b.length > 18 ? b.substring(0, 16) + "..." : b;
-}
-
-function IncineratorProtocol() {
-  return (
-    <section
-      className="relative mx-3 mt-4 overflow-hidden rounded-2xl border border-[#8c1e2b]/80 bg-[#0b0d0c] shadow-[0_0_40px_rgba(140,30,43,0.18)]"
-      aria-label="TurtleCC incenerator@ Protocol"
-      data-testid="embedded-incinerator-notice"
-    >
-      <div className="pointer-events-none absolute -right-24 -top-28 h-64 w-64 rounded-full bg-[#8c1e2b]/10 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-32 left-1/3 h-56 w-56 rounded-full bg-[#c19a4a]/[0.06] blur-3xl" />
-
-      <div className="relative p-4 sm:p-6">
-        <div className="flex items-start gap-3 sm:gap-5">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-[#b2914b]/70 bg-[#201b18] text-[#e2bd6b] shadow-[inset_0_0_18px_rgba(226,189,107,0.07)] sm:h-16 sm:w-16">
-            <Hourglass className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={1.5} />
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#d64a58]">Inventory protocol</span>
-              <span className="h-1 w-1 rounded-full bg-[#d64a58] shadow-[0_0_8px_#d64a58]" />
-              <span className="text-[9px] font-medium uppercase tracking-[0.18em] text-white/35">TurtleCC</span>
-            </div>
-            <h2 className="mt-1 text-xl font-black uppercase leading-none tracking-[0.12em] text-[#e2bd6b] sm:text-2xl">
-              TurtleCC incenerator@
-              <span className="block mt-1">Protocol</span>
-            </h2>
-          </div>
-        </div>
-
-        <div className="mt-5 flex items-center gap-2">
-          <ShieldCheck className="h-4 w-4 shrink-0 text-[#e2bd6b]" strokeWidth={1.8} />
-          <span className="rounded-md border border-[#b2914b]/70 bg-[#201b18]/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-[#e2bd6b] sm:text-[11px]">
-            24H hard purge
-          </span>
-        </div>
-
-        <p className="mt-4 max-w-3xl text-sm leading-7 text-white/55 sm:text-base sm:leading-8">
-          Stock never ages here. Every line is{" "}
-          <strong className="font-semibold text-white">rotated within 24 hours</strong>
-          {" "}— past that window it is{" "}
-          <strong className="font-bold text-[#ff4d5f]">purged for good.</strong>
-          {" "}No leftovers, no recycled bins.
-        </p>
-
-        <div className="mt-5 flex items-center gap-3 border-t border-white/[0.07] pt-4">
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
-            {Array.from({ length: 14 }, (_, index) => (
-              <span
-                key={index}
-                className={`h-2.5 w-2.5 shrink-0 rounded-full sm:h-3 sm:w-3 ${
-                  index < 8
-                    ? "bg-[#d7b35f] shadow-[0_0_8px_rgba(215,179,95,0.35)]"
-                    : "bg-white/[0.10]"
-                }`}
-              />
-            ))}
-          </div>
-          <span className="shrink-0 text-sm font-medium tracking-tight text-[#e2bd6b] sm:text-base">≤24h</span>
-        </div>
-        <div className="mt-1 flex justify-between text-[9px] font-medium uppercase tracking-[0.16em] text-white/25">
-          <span>Fresh rotation</span>
-          <span>Purged</span>
-        </div>
-      </div>
-    </section>
-  );
 }
 
 export default function CardsPage() {
@@ -281,7 +213,6 @@ export default function CardsPage() {
   return (
     <div className="max-w-2xl lg:max-w-5xl xl:max-w-6xl mx-auto">
 
-      <IncineratorProtocol />
 
       {/* ── Hero ── */}
       <div className="text-center pt-8 pb-4 space-y-1">

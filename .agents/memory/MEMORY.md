@@ -14,3 +14,4 @@
 - [Auth route registration order](auth-route-registration-order.md) — register routes using Passport helpers after auth middleware is mounted.
 - [Supabase runtime connection](supabase-runtime-connection.md) — the Supabase MCP connection enables agent inspection, but Drizzle still needs a direct PostgreSQL URL to use Supabase at runtime.
 - [Replit PostgreSQL bindings](replit-postgres-bindings.md) — workflows may expose PG* variables without DATABASE_URL; node-postgres can connect through those managed bindings.
+- [Crypto payment settlement](crypto-payment-settlement.md) — blockchain confirmations can race across webhooks, polling, and client status checks; settle idempotently and retry incomplete settlements.
