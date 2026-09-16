@@ -43,7 +43,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     staleTime: 30000,
   });
 
-  const { data: announcements } = useQuery<{ id: number; content: string; link: string | null; active: boolean }[]>({
+  const { data: announcements } = useQuery<{ id: number; content: string; link: string | null; active: boolean; bannerColor?: string }[]>({
     queryKey: ["/api/announcements"],
     staleTime: 60000,
   });
@@ -96,7 +96,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     }] : []),
   ];
 
-  const isEntryPage = location === "/auth";
+  const isEntryPage = location === "/auth" || location === "/forgot-password";
   if (isEntryPage) return <>{children}</>;
 
   return (
@@ -104,7 +104,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* ── Announcement banner ── */}
       {activeAnnouncements.length > 0 && (
-        <div className="w-full overflow-hidden z-50" style={{ height: 32, background: "linear-gradient(90deg,#5a0000,#ff2d2d,#5a0000)" }}>
+        <div
+          className="w-full overflow-hidden z-50"
+          style={{ height: 32, backgroundColor: activeAnnouncements[0].bannerColor ?? "#5a0000" }}
+        >
           <div className="flex items-center h-full whitespace-nowrap animate-[marquee_18s_linear_infinite]">
             {[...Array(4)].flatMap((_, repeat) => activeAnnouncements.map((announcement) => (
               announcement.link ? (

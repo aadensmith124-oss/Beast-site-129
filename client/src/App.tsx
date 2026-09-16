@@ -65,7 +65,7 @@ function Router() {
   useForebitPolling();
 
   useEffect(() => {
-    if (!isLoading && !isError && !user && location !== "/auth") {
+    if (!isLoading && !isError && !user && !["/auth", "/forgot-password"].includes(location)) {
       setLocation("/auth");
     }
   }, [user, isLoading, isError, location, setLocation]);
@@ -82,6 +82,7 @@ function Router() {
     <Layout>
       <Switch>
         <Route path="/auth" component={AuthPage} />
+        <Route path="/forgot-password" component={AuthPage} />
         <Route path="/" component={CardsPage} />
         <Route path="/deposit" component={DepositPage} />
         <Route path="/shop" component={LogsPage} />

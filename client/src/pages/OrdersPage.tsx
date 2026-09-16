@@ -3,7 +3,7 @@ import { useOrders } from "@/hooks/use-orders";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Download, Loader2, RefreshCw } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -69,6 +69,35 @@ export default function OrdersPage() {
   const [, setLocation] = useLocation();
   const [tab, setTab] = useState<TabType>("all");
   const [search, setSearch] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+
+  const exportOrders = async () => {
+    setIsExporting(true);
+    try {
+      const response = await fetch("/api/orders/export", { credentials: "include" });
+      if (!response.ok) throw new Error("Unable to export orders.");
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `orders-${new Date().toISOString().slice(0, 10)}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast({ title: "Orders exported", description: "Your text file is downloading." });
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: error instanceof Error ? error.message : "Unable to export orders.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const createVouch = useMutation({
     mutationFn: async (orderId: number) => {
       const response = await apiRequest("POST", "/api/vouches/create-token", { orderId });
@@ -172,6 +201,15 @@ export default function OrdersPage() {
           >
             <RefreshCw className={`h-3 w-3 ${isRefetching ? "animate-spin" : ""}`} />
             Refresh
+          </button>
+          <button
+            onClick={exportOrders}
+            disabled={isExporting}
+            className="flex items-center gap-1.5 border border-primary/30 bg-primary/10 rounded px-3 py-1.5 text-xs text-primary hover:bg-primary/20 transition-all disabled:opacity-50"
+            data-testid="btn-export-orders"
+          >
+            <Download className="h-3 w-3" />
+            {isExporting ? "Exporting..." : "Export"}
           </button>
           <a href="https://t.me/+3-lMkt-idutkOTIx" target="_blank" rel="noopener noreferrer">
             <button className="flex items-center gap-1.5 border border-white/10 bg-[#111] rounded px-3 py-1.5 text-xs text-white/45 hover:text-white/70 transition-all" data-testid="btn-support">

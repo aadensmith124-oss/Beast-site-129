@@ -62,4 +62,4 @@
 .pro-card { @apply bg-[#111111] border border-white/10 rounded-2xl shadow-sm; }
 .item-row { @apply border border-white/10 bg-[#111111] rounded-xl p-3 hover:bg-primary/[0.06] transition-colors; }
 
-.ticket-ui { zoom: 0.5; }
+.ticket-ui { zoom: 0.665; }

@@ -13,6 +13,7 @@ import { cryptoPayments, orders, orderItems, verifications, variants, userIps, u
 import { db } from "./db.js";
 import { eq, and, ne, desc, sql } from "drizzle-orm";
 import { MAX_LICENSE_FILE_BYTES, parseLicenseKeyFile } from "./license-key-file.js";
+import { formatOrdersAsText } from "./order-export.js";
 import {
   approveVouch,
   bindVouchToken,
@@ -179,7 +180,8 @@ export async function registerRoutes(
   // Public announcements
   app.get("/api/announcements", async (req, res) => {
     const all = await storage.getAnnouncements();
-    res.json(all);
+    const bannerColor = await storage.getSetting("announcement_banner_color", "#5a0000");
+    res.json(all.map((announcement) => ({ ...announcement, bannerColor })));
   });
 
   // Products
@@ -293,6 +295,25 @@ export async function registerRoutes(
       vouchRewardAmount: latestByOrder.get(order.id)?.rewardAmount ?? null,
       vouchReviewedAt: latestByOrder.get(order.id)?.reviewedAt ?? null,
     })));
+  });
+
+  app.get("/api/orders/export", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const orders = await storage.getOrders((req.user as any).id);
+      const date = new Date().toISOString().slice(0, 10);
+      res
+        .status(200)
+        .set({
+          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Disposition": `attachment; filename="orders-${date}.txt"`,
+          "Cache-Control": "no-store",
+        })
+        .send(formatOrdersAsText(orders));
+    } catch (error) {
+      console.error("[orders] export failed:", error);
+      res.status(500).json({ message: "Unable to export orders right now." });
+    }
   });
 
   app.get(api.orders.get.path, async (req, res) => {
@@ -1288,6 +1309,30 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  // Admin - Set a user's password
+  app.patch("/api/admin/users/:id/password", passwordChangeLimiter, async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const userId = Number(req.params.id);
+    const { newPassword } = req.body ?? {};
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({ message: "Invalid user" });
+    }
+    if (typeof newPassword !== "string" || newPassword.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+    }
+
+    const target = await storage.getUser(userId);
+    if (!target) return res.status(404).json({ message: "User not found" });
+
+    const hashed = await hashPassword(newPassword);
+    await storage.updateUser(userId, { password: hashed });
+    console.info(`[security] admin ${(req.user as any).id} changed password for user ${userId}`);
+    res.json({ success: true });
+  });
+
   // Admin: get crypto addresses for a user
   app.get("/api/admin/users/:id/crypto-addresses", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== 'admin') {
@@ -1405,6 +1450,28 @@ export async function registerRoutes(
     }
     const announcements = await storage.getAllAnnouncements();
     res.json(announcements);
+  });
+
+  app.get("/api/admin/announcements/config", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== 'admin') {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const bannerColor = await storage.getSetting("announcement_banner_color", "#5a0000");
+    res.json({ bannerColor });
+  });
+
+  app.patch("/api/admin/announcements/config", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== 'admin') {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const bannerColor = typeof req.body.bannerColor === "string"
+      ? req.body.bannerColor.trim().toLowerCase()
+      : "";
+    if (!/^#[0-9a-f]{6}$/.test(bannerColor)) {
+      return res.status(400).json({ message: "Banner color must be a 6-digit hex color." });
+    }
+    await storage.setSetting("announcement_banner_color", bannerColor);
+    res.json({ bannerColor });
   });
 
   app.post("/api/admin/announcements", async (req, res) => {

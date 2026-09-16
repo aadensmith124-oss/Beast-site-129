@@ -256,6 +256,7 @@ function AnnouncementsSection() {
   const [content, setContent] = useState("");
   const [link, setLink] = useState("");
   const [active, setActive] = useState(true);
+  const [bannerColor, setBannerColor] = useState("#5a0000");
   const { toast } = useToast();
 
   const { data: announcements = [], isLoading } = useQuery<Array<{
@@ -267,6 +268,14 @@ function AnnouncementsSection() {
   }>>({
     queryKey: ["/api/admin/announcements"],
   });
+
+  const { data: announcementConfig } = useQuery<{ bannerColor: string }>({
+    queryKey: ["/api/admin/announcements/config"],
+  });
+
+  useEffect(() => {
+    if (announcementConfig?.bannerColor) setBannerColor(announcementConfig.bannerColor);
+  }, [announcementConfig?.bannerColor]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -315,6 +324,22 @@ function AnnouncementsSection() {
     },
     onError: (error: Error) => {
       toast({ title: "Could not delete announcement", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const colorMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("PATCH", "/api/admin/announcements/config", { bannerColor });
+      return res.json() as Promise<{ bannerColor: string }>;
+    },
+    onSuccess: (result) => {
+      setBannerColor(result.bannerColor);
+      queryClient.invalidateQueries({ queryKey: ["/api/announcements"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/announcements/config"] });
+      toast({ title: "Banner color saved" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not save banner color", description: error.message, variant: "destructive" });
     },
   });
 
@@ -369,6 +394,42 @@ function AnnouncementsSection() {
               data-testid="input-announcement-link"
             />
             <p className="text-[11px] text-white/35">Customers can click the message to open this link in a new tab.</p>
+          </div>
+
+          <div className="space-y-3 rounded-lg border border-white/10 bg-[#0d0d0d] px-3 py-3">
+            <div>
+              <p className="text-sm font-medium text-white">Banner color</p>
+              <p className="text-xs text-white/40">Choose the background color shown behind active announcements.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={bannerColor}
+                onChange={(event) => setBannerColor(event.target.value)}
+                className="h-10 w-14 cursor-pointer rounded border border-white/20 bg-transparent p-1"
+                aria-label="Announcement banner color"
+                data-testid="input-announcement-banner-color"
+              />
+              <Input
+                value={bannerColor}
+                onChange={(event) => setBannerColor(event.target.value)}
+                placeholder="#5a0000"
+                maxLength={7}
+                className="max-w-36 bg-[#111] border-white/10 font-mono uppercase"
+                data-testid="input-announcement-banner-color-hex"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => colorMutation.mutate()}
+                disabled={colorMutation.isPending || !/^#[0-9a-fA-F]{6}$/.test(bannerColor)}
+                className="ml-auto border-white/10"
+                data-testid="button-save-announcement-banner-color"
+              >
+                {colorMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save color"}
+              </Button>
+            </div>
+            <div className="h-7 rounded-md border border-white/10" style={{ backgroundColor: bannerColor }} aria-label="Banner color preview" />
           </div>
 
           <div className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-[#0d0d0d] px-3 py-3">
@@ -1596,6 +1657,8 @@ function UsersSection() {
   const qc = useQueryClient();
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [balanceInput, setBalanceInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [search, setSearch] = useState("");
 
   const { data: users, isLoading } = useQuery({
@@ -1675,6 +1738,20 @@ function UsersSection() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
+  const setPasswordMutation = useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: number; newPassword: string }) => {
+      const res = await apiRequest('PATCH', `/api/admin/users/${userId}/password`, { newPassword });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Failed'); }
+      return res.json();
+    },
+    onSuccess: () => {
+      setPasswordInput("");
+      setPasswordConfirmation("");
+      toast({ title: 'Password changed' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
   if (isLoading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" /></div>;
 
   const filtered = (users ?? []).filter((u: any) =>
@@ -1739,6 +1816,48 @@ function UsersSection() {
           </div>
 
           {/* Role + Actions */}
+           <div className="space-y-1.5 pt-1 border-t border-white/10">
+             <p className="text-[9px] text-white/40 uppercase tracking-widest">Set Password</p>
+             <div className="grid gap-2 sm:grid-cols-2">
+               <input
+                 value={passwordInput}
+                 onChange={e => setPasswordInput(e.target.value)}
+                 placeholder="New password"
+                 type="password"
+                 autoComplete="new-password"
+                 minLength={12}
+                 className="h-8 bg-[#0d0d0d] border border-white/10 rounded px-2 text-xs text-white outline-none focus:border-primary/40"
+                 data-testid={`input-password-${selectedUser.id}`}
+               />
+               <input
+                 value={passwordConfirmation}
+                 onChange={e => setPasswordConfirmation(e.target.value)}
+                 placeholder="Confirm new password"
+                 type="password"
+                 autoComplete="new-password"
+                 minLength={12}
+                 className="h-8 bg-[#0d0d0d] border border-white/10 rounded px-2 text-xs text-white outline-none focus:border-primary/40"
+                 data-testid={`input-password-confirm-${selectedUser.id}`}
+               />
+             </div>
+             <div className="flex items-center justify-between gap-2">
+               <p className="text-[10px] text-white/35">At least 12 characters.</p>
+               <button
+                 onClick={() => setPasswordMutation.mutate({ userId: selectedUser.id, newPassword: passwordInput })}
+                 disabled={
+                   setPasswordMutation.isPending ||
+                   passwordInput.length < 12 ||
+                   passwordInput !== passwordConfirmation
+                 }
+                 className="h-8 px-3 bg-primary/80 hover:bg-primary text-white text-xs font-bold rounded transition-colors disabled:opacity-40 flex items-center gap-1"
+                 data-testid={`btn-set-password-${selectedUser.id}`}
+               >
+                 {setPasswordMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Change Password"}
+               </button>
+             </div>
+           </div>
+
+           {/* Role + Actions */}
           <div className="flex flex-wrap gap-2 pt-1 border-t border-white/10">
             {selectedUser.role !== "admin" ? (
               <button
@@ -1824,7 +1943,12 @@ function UsersSection() {
         {filtered.map((user: any) => (
           <button
             key={user.id}
-            onClick={() => { setSelectedUser(user); setBalanceInput(""); }}
+             onClick={() => {
+               setSelectedUser(user);
+               setBalanceInput("");
+               setPasswordInput("");
+               setPasswordConfirmation("");
+             }}
             className="w-full text-left bg-[#111] border border-white/10 rounded-xl px-3 py-2.5 hover:border-white/10 transition-colors"
             data-testid={`btn-user-${user.id}`}
           >

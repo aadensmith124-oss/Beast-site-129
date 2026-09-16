@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { Redirect } from "wouter";
-import { Loader2, Eye, EyeOff, RefreshCw, Send, CreditCard } from "lucide-react";
+import { Redirect, useLocation } from "wouter";
+import { Loader2, Eye, EyeOff, RefreshCw, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 /* ── SVG Captcha ──────────────────────────────────────────── */
@@ -59,14 +59,18 @@ function useCaptcha() {
 
 /* ── Shared components ──────────────────────────────────────── */
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="block text-sm font-medium text-white/80 mb-1.5">{children}</label>;
+  return (
+    <label className="block text-sm font-medium text-white mb-1.5">
+      {children} <span className="text-[#22d3ee]">*</span>
+    </label>
+  );
 }
 
 function FieldInput(props: React.InputHTMLAttributes<HTMLInputElement> & { "data-testid"?: string }) {
   return (
     <input
       {...props}
-      className={`w-full bg-[#1a1a1a] border border-white/10 rounded text-sm text-white px-3 py-2.5 outline-none focus:border-primary/60 transition-colors placeholder:text-white/25 ${props.className ?? ""}`}
+      className={`w-full h-10 bg-[#151515] border border-white/20 rounded-lg text-sm text-white px-3.5 outline-none focus:border-[#22d3ee] transition-colors placeholder:text-white/35 disabled:opacity-60 ${props.className ?? ""}`}
     />
   );
 }
@@ -89,7 +93,7 @@ function PasswordInput({ value, onChange, placeholder, disabled, testId }: {
       <button
         type="button"
         onClick={() => setShow(s => !s)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/50 transition-colors"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/45 hover:text-[#22d3ee] transition-colors"
         tabIndex={-1}
       >
         {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -98,7 +102,7 @@ function PasswordInput({ value, onChange, placeholder, disabled, testId }: {
   );
 }
 
-function BlueButton({ children, disabled, type = "submit", onClick, className = "" }: {
+function PrimaryButton({ children, disabled, type = "submit", onClick, className = "" }: {
   children: React.ReactNode; disabled?: boolean; type?: "submit" | "button"; onClick?: () => void; className?: string;
 }) {
   return (
@@ -106,7 +110,7 @@ function BlueButton({ children, disabled, type = "submit", onClick, className = 
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className={`w-full bg-accent hover:bg-[hsl(42_85%_48%)] disabled:opacity-50 disabled:cursor-not-allowed text-accent-foreground font-semibold text-sm py-3 rounded transition-colors flex items-center justify-center gap-2 ${className}`}
+      className={`w-full h-10 bg-[#22d3ee] hover:bg-[#67e8f9] disabled:opacity-50 disabled:cursor-not-allowed text-[#06252a] font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2 ${className}`}
     >
       {children}
     </button>
@@ -114,12 +118,16 @@ function BlueButton({ children, disabled, type = "submit", onClick, className = 
 }
 
 /* ── Login form ─────────────────────────────────────────────── */
-function LoginForm({ onSwitchToRegister }: { onSwitchToRegister: () => void }) {
+function LoginForm({ onSwitchToRegister, onSwitchToForgot }: {
+  onSwitchToRegister: () => void;
+  onSwitchToForgot: () => void;
+}) {
   const { login, isLoggingIn } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [captchaInput, setCaptchaInput] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const { code: captchaCode, tick: captchaTick, refresh: refreshCaptcha } = useCaptcha();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,57 +143,79 @@ function LoginForm({ onSwitchToRegister }: { onSwitchToRegister: () => void }) {
   };
 
   return (
-    <>
-      <h1 className="text-2xl font-bold text-white text-center mb-7">Login</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <section>
+      <h1 className="text-[1.55rem] sm:text-[1.7rem] leading-tight font-bold text-white text-center">
+        Login to your account
+      </h1>
+      <p className="mt-2.5 text-center text-sm leading-relaxed text-white/55">
+        Enter your email below to login to your account
+      </p>
+      <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
         <div>
           <FieldLabel>Email</FieldLabel>
           <FieldInput type="email" value={email} onChange={e => setEmail(e.target.value)}
-            placeholder="emai@service.com" disabled={isLoggingIn} autoComplete="email" data-testid="input-email" />
+            placeholder="Enter your email" disabled={isLoggingIn} autoComplete="email" data-testid="input-email" />
         </div>
         <div>
           <FieldLabel>Password</FieldLabel>
-          <PasswordInput value={password} onChange={setPassword} disabled={isLoggingIn} testId="input-password" />
+          <PasswordInput value={password} onChange={setPassword} placeholder="Enter your password" disabled={isLoggingIn} testId="input-password" />
         </div>
 
-        {/* Captcha */}
-        <div className="bg-white rounded overflow-hidden flex items-center px-3 py-2 gap-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-3">
-              <div className="rounded overflow-hidden border border-gray-200">
-                <CaptchaImage code={captchaCode} tick={captchaTick} width={120} height={44} />
-              </div>
-              <input
-                type="text"
-                value={captchaInput}
-                onChange={e => setCaptchaInput(e.target.value)}
-                placeholder="Enter code"
-                disabled={isLoggingIn}
-                autoComplete="off"
-                className="flex-1 text-sm text-black bg-transparent outline-none placeholder:text-gray-400 tracking-widest"
-                data-testid="input-captcha"
-              />
-            </div>
-          </div>
-          <button type="button" onClick={() => { refreshCaptcha(); setCaptchaInput(""); }}
-            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0" data-testid="btn-refresh-captcha">
-            <RefreshCw className="h-4 w-4" />
+        <div className="flex items-center justify-between gap-3 pt-0.5">
+          <label className="flex items-center gap-2 text-sm text-white/85 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={e => setRememberMe(e.target.checked)}
+              className="h-4 w-4 appearance-none rounded border border-white/25 bg-[#151515] checked:bg-[#22d3ee] checked:border-[#22d3ee] relative checked:after:content-['✓'] checked:after:absolute checked:after:inset-0 checked:after:flex checked:after:items-center checked:after:justify-center checked:after:text-[10px] checked:after:text-black"
+              data-testid="checkbox-remember-me"
+            />
+            Remember me
+          </label>
+          <button
+            type="button"
+            onClick={onSwitchToForgot}
+            className="text-sm text-white/55 hover:text-[#22d3ee] transition-colors whitespace-nowrap"
+          >
+            Forgot password
           </button>
         </div>
 
-        <BlueButton disabled={isLoggingIn || !email.trim() || !password || !captchaInput.trim()} data-testid="btn-login">
+        <div className="rounded-lg border border-white/25 bg-[#2a2a2a] px-2.5 py-2">
+          <div className="flex items-center gap-2">
+            <div className="rounded overflow-hidden border border-white/15 shrink-0">
+              <CaptchaImage code={captchaCode} tick={captchaTick} width={84} height={32} />
+            </div>
+            <input
+              type="text"
+              value={captchaInput}
+              onChange={e => setCaptchaInput(e.target.value)}
+              placeholder="Verification code"
+              disabled={isLoggingIn}
+              autoComplete="off"
+              className="min-w-0 flex-1 text-xs text-white bg-transparent outline-none placeholder:text-white/45 tracking-widest"
+              data-testid="input-captcha"
+            />
+            <button type="button" onClick={() => { refreshCaptcha(); setCaptchaInput(""); }}
+              className="text-white/45 hover:text-[#22d3ee] transition-colors shrink-0" data-testid="btn-refresh-captcha">
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <p className="mt-1.5 text-[10px] text-white/45">Complete the verification to continue</p>
+        </div>
+
+        <PrimaryButton disabled={isLoggingIn || !email.trim() || !password || !captchaInput.trim()} data-testid="btn-login">
           {isLoggingIn ? <Loader2 className="h-4 w-4 animate-spin" /> : "Login"}
-        </BlueButton>
+        </PrimaryButton>
       </form>
 
-      <div className="mt-5 text-center space-y-1">
+      <div className="mt-5 text-center">
         <p className="text-sm text-white/60">
           Don't have an account?{" "}
-          <button onClick={onSwitchToRegister} className="text-primary hover:underline font-medium">create one</button>
-          {" "}now
+          <button onClick={onSwitchToRegister} className="text-white hover:text-[#22d3ee] transition-colors font-medium">Sign up</button>
         </p>
       </div>
-    </>
+    </section>
   );
 }
 
@@ -222,94 +252,173 @@ function RegisterForm({ onSwitchToLogin }: { onSwitchToLogin: () => void }) {
 
   if (done) {
     return (
-      <>
-        <h1 className="text-2xl font-bold text-white text-center mb-7">Signup</h1>
-        <div className="text-center space-y-4 py-4">
-          <div className="text-4xl">✓</div>
+      <section>
+        <h1 className="text-[1.55rem] sm:text-[1.7rem] leading-tight font-bold text-white text-center">Account created</h1>
+        <div className="text-center space-y-3 py-3">
+          <div className="text-3xl text-[#22d3ee]">✓</div>
           <p className="text-sm font-bold text-white">Account created!</p>
           <p className="text-sm text-white/50 leading-relaxed">Sign in with your email and password.</p>
-          <BlueButton type="button" onClick={onSwitchToLogin} data-testid="btn-go-login">Sign In</BlueButton>
+          <PrimaryButton type="button" onClick={onSwitchToLogin} data-testid="btn-go-login">Sign In</PrimaryButton>
         </div>
-      </>
+      </section>
     );
   }
 
   return (
-    <>
-      <h1 className="text-2xl font-bold text-white text-center mb-7">Signup</h1>
-      <form onSubmit={handleCreate} className="space-y-4">
+    <section>
+      <h1 className="text-[1.55rem] sm:text-[1.7rem] leading-tight font-bold text-white text-center">
+        Create your account
+      </h1>
+      <p className="mt-2.5 text-center text-sm leading-relaxed text-white/55">
+        Enter your email below to create your account
+      </p>
+      <form onSubmit={handleCreate} className="mt-5 space-y-3.5">
         <div>
           <FieldLabel>Email</FieldLabel>
           <FieldInput type="email" value={email} onChange={e => setEmail(e.target.value)}
-            placeholder="emai@service.com" disabled={submitting} autoComplete="email" data-testid="input-reg-email" />
+            placeholder="Enter your email" disabled={submitting} autoComplete="email" data-testid="input-reg-email" />
         </div>
         <div>
           <FieldLabel>Password</FieldLabel>
-          <PasswordInput value={password} onChange={setPassword} placeholder="password" disabled={submitting} testId="input-reg-password" />
+          <PasswordInput value={password} onChange={setPassword} placeholder="Enter your password" disabled={submitting} testId="input-reg-password" />
         </div>
         <div>
           <FieldLabel>Confirm Password</FieldLabel>
-          <PasswordInput value={confirm} onChange={setConfirm} placeholder="repeat password" disabled={submitting} testId="input-reg-confirm" />
+          <PasswordInput value={confirm} onChange={setConfirm} placeholder="Confirm your password" disabled={submitting} testId="input-reg-confirm" />
         </div>
 
-        <BlueButton disabled={submitting || !email.trim() || !password || !confirm} data-testid="btn-register">
+        <PrimaryButton disabled={submitting || !email.trim() || !password || !confirm} data-testid="btn-register">
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Signup"}
-        </BlueButton>
+        </PrimaryButton>
       </form>
 
       <div className="mt-5 text-center">
         <p className="text-sm text-white/60">
           Already have an account?{" "}
-          <button onClick={onSwitchToLogin} className="text-primary hover:underline font-medium">login</button>
+          <button onClick={onSwitchToLogin} className="text-white hover:text-[#22d3ee] transition-colors font-medium">Login</button>
         </p>
       </div>
-    </>
+    </section>
+  );
+}
+
+/* ── Password recovery page ─────────────────────────────────── */
+function ForgotPasswordForm({ onSwitchToLogin }: { onSwitchToLogin: () => void }) {
+  const { toast } = useToast();
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!email.trim()) return;
+    setSubmitted(true);
+    toast({
+      title: "Recovery request noted",
+      description: "Contact support using the link below to reset your password.",
+    });
+  };
+
+  return (
+    <section>
+      <h1 className="text-[1.55rem] sm:text-[1.7rem] leading-tight font-bold text-white text-center">
+        Forgot your password?
+      </h1>
+      <p className="mt-2.5 text-center text-sm leading-relaxed text-white/55">
+        Enter your account email and we’ll help you regain access.
+      </p>
+
+      {!submitted ? (
+        <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
+          <div>
+            <FieldLabel>Email</FieldLabel>
+            <FieldInput
+              type="email"
+              value={email}
+              onChange={event => setEmail(event.target.value)}
+              placeholder="Enter your email"
+              autoComplete="email"
+              required
+              data-testid="input-forgot-email"
+            />
+          </div>
+          <PrimaryButton disabled={!email.trim()} data-testid="btn-forgot-password">
+            Request password help
+          </PrimaryButton>
+        </form>
+      ) : (
+        <div className="mt-5 rounded-lg border border-[#22d3ee]/25 bg-[#22d3ee]/5 p-3.5 text-center">
+          <p className="text-sm font-medium text-white">Request received</p>
+          <p className="mt-1.5 text-xs leading-relaxed text-white/55">
+            Contact support on Telegram and include <span className="text-[#22d3ee]">{email.trim()}</span> so your password can be reset.
+          </p>
+          <a
+            href="https://t.me/+3-lMkt-idutkOTIx"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex h-9 items-center justify-center rounded-lg bg-[#22d3ee] px-4 text-sm font-semibold text-[#06252a] hover:bg-[#67e8f9] transition-colors"
+            data-testid="link-forgot-support"
+          >
+            Contact support
+          </a>
+        </div>
+      )}
+
+      <div className="mt-5 text-center">
+        <button onClick={onSwitchToLogin} className="text-sm text-white/60 hover:text-[#22d3ee] transition-colors">
+          ← Back to login
+        </button>
+      </div>
+    </section>
   );
 }
 
 /* ── Footer ─────────────────────────────────────────────────── */
 function AuthFooter() {
   return (
-    <div className="mt-auto border-t border-white/8 py-6 px-4 text-center space-y-2">
-      <div className="flex items-center justify-center gap-5 text-xs font-semibold text-white/50 tracking-widest uppercase">
-        <span>Reviews</span>
-        <a href="https://t.me/+3-lMkt-idutkOTIx" target="_blank" rel="noopener noreferrer"
-          className="flex items-center justify-center h-5 w-5 rounded-full bg-primary">
-          <Send className="h-2.5 w-2.5 text-white fill-white" />
-        </a>
-        <span>TOS</span>
-        <span>FAQs</span>
+    <footer className="w-full max-w-[360px] mx-auto px-5 pt-7 pb-5 text-center">
+      <div className="flex items-center justify-center gap-2 text-[11px] text-white/25">
+        <span>Privacy Policy</span>
+        <span>•</span>
+        <span>Terms of Service</span>
+        <span>•</span>
+        <span>Status</span>
       </div>
-      <p className="text-xs text-white/25">© 2026 TurtleCC. All rights reserved</p>
-    </div>
+      <p className="mt-2 text-[10px] text-white/15">© 2026 TurtleCC. All rights reserved</p>
+    </footer>
   );
 }
 
 /* ── Main page ──────────────────────────────────────────────── */
 export default function AuthPage() {
   const { user } = useAuth();
-  const [tab, setTab] = useState<"login" | "register">("login");
+  const [location, setLocation] = useLocation();
+  const [tab, setTab] = useState<"login" | "register" | "forgot">(
+    location === "/forgot-password" ? "forgot" : "login",
+  );
 
   if (user) return <Redirect to="/" />;
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#0d0d0d" }}>
-      <div className="flex-1 flex flex-col items-center justify-center px-5 py-10">
-        <div className="w-full max-w-[380px]">
-          <div className="flex flex-col items-center mb-8" aria-label="TurtleCC">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 shadow-[0_0_28px_rgba(154,203,63,0.12)]">
-              <CreditCard className="h-6 w-6 text-primary" strokeWidth={1.8} />
-            </div>
-            <div className="mt-3 text-lg font-black uppercase tracking-[0.2em] text-primary">
-              TurtleCC
-            </div>
+    <div className="min-h-[100dvh] flex flex-col bg-[#080808] text-white">
+      <main className="flex-1 w-full max-w-[360px] mx-auto px-5 pt-8 sm:pt-10">
+        <div className="flex flex-col items-center mb-6" aria-label="TurtleCC">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#22d3ee]/50 bg-[#121212] shadow-[0_0_22px_rgba(34,211,238,0.16)]">
+            <CreditCard className="h-5 w-5 text-[#22d3ee]" strokeWidth={1.6} />
           </div>
-          {tab === "login"
-            ? <LoginForm onSwitchToRegister={() => setTab("register")} />
-            : <RegisterForm onSwitchToLogin={() => setTab("login")} />
-          }
+          <div className="mt-2 text-base font-semibold tracking-tight text-white">TurtleCC</div>
         </div>
-      </div>
+        {tab === "login"
+          ? (
+            <LoginForm
+              onSwitchToRegister={() => setTab("register")}
+              onSwitchToForgot={() => { setTab("forgot"); setLocation("/forgot-password"); }}
+            />
+          )
+          : tab === "register"
+            ? <RegisterForm onSwitchToLogin={() => { setTab("login"); setLocation("/auth"); }} />
+            : <ForgotPasswordForm onSwitchToLogin={() => { setTab("login"); setLocation("/auth"); }} />
+        }
+      </main>
       <AuthFooter />
     </div>
   );
