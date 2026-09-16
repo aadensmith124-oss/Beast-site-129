@@ -186,5 +186,11 @@ export async function initializeApp(
   pollPendingCryptoPayments();
   setInterval(pollPendingCryptoPayments, 30 * 1000);
 
-  startTelegramBot();
+  // Telegram permits only one long-polling consumer per bot token. Keep the
+  // preview process from competing with the published production bot.
+  if (process.env.NODE_ENV === "production") {
+    startTelegramBot();
+  } else {
+    log("Telegram polling disabled in development; use the published bot", "telegram");
+  }
 }
