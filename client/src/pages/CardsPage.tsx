@@ -133,12 +133,19 @@ export default function CardsPage() {
 
   if (features && features.cards === false) return <Redirect to="/" />;
 
-  const { data: cards, isLoading } = useQuery<any[]>({
+  const { data: cards, isLoading, isError, error } = useQuery<any[]>({
     queryKey: ["/api/cards", selectedBase],
     queryFn: async () => {
       const url = selectedBase ? `/api/cards?baseId=${selectedBase}` : "/api/cards";
       const res = await fetch(url, { credentials: "include" });
-      return res.json();
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(payload?.message || `Cards request failed (${res.status})`);
+      }
+      if (!Array.isArray(payload)) {
+        throw new Error("Cards request returned an invalid response.");
+      }
+      return payload;
     },
     refetchInterval: 20000,
   });
@@ -387,6 +394,10 @@ export default function CardsPage() {
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-4 w-4 animate-spin text-white/30" />
+          </div>
+        ) : isError ? (
+          <div className="py-12 text-center text-xs text-red-300/80">
+            Unable to load cards: {error instanceof Error ? error.message : "Please try again."}
           </div>
         ) : filteredCards.length === 0 ? (
           <div className="py-12 text-center text-xs text-white/35">No cards available</div>
