@@ -5,7 +5,7 @@ import { storage } from "./storage.js";
 import { setupAuth, MIN_PASSWORD_LENGTH, passwordChangeLimiter } from "./auth.js";
 import { api } from "../shared/routes.js";
 import { z } from "zod";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { scrypt, randomBytes, randomInt, timingSafeEqual } from "crypto";
 import { createNowPaymentsInvoice, getNowPaymentsInvoice, mapNowPaymentsStatus, verifyNowPaymentsWebhook } from "./nowpayments.js";
 import { settleCryptoPayment } from "./crypto-settlement.js";
 import { hashPassword, comparePassword } from "./auth.js";
@@ -666,6 +666,51 @@ export async function registerRoutes(
       payout,
       newBalance: updatedUser?.balance || 0,
       grid,
+    });
+  });
+
+  // Plinko — eight fair server-side left/right steps. Payouts are disclosed in
+  // the client and have a theoretical return of approximately 96.2%.
+  app.post(api.games.plinko.path, gameLimiter, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+
+    const bet = Number(req.body?.betAmount);
+    if (!Number.isFinite(bet) || !Number.isInteger(bet) || bet < 1) {
+      return res.status(400).json({ message: "Invalid bet amount." });
+    }
+    if (bet > 100000) {
+      return res.status(400).json({ message: "Bet amount exceeds maximum allowed." });
+    }
+
+    const userId = (req.user as any).id;
+    const path = Array.from({ length: 8 }, () => randomInt(0, 2));
+    const slot = path.reduce((position, step) => position + step, 0);
+    const multipliers = [3, 2.2, 1.3, 0.9, 0.45, 0.9, 1.3, 2.2, 3] as const;
+    const multiplier = multipliers[slot];
+    const payout = Math.round(bet * multiplier);
+
+    const [debitedUser] = await db.update(users)
+      .set({ balance: sql`${users.balance} - ${bet}` })
+      .where(and(eq(users.id, userId), sql`${users.balance} >= ${bet}`))
+      .returning({ balance: users.balance });
+    if (!debitedUser) {
+      return res.status(400).json({ message: "Insufficient balance" });
+    }
+
+    await storage.createTransaction(userId, -bet, "loss", "Plinko game bet");
+    if (payout > 0) {
+      await storage.updateUserBalance(userId, payout);
+      await storage.createTransaction(userId, payout, "win", `Plinko payout (${multiplier}x)`);
+    }
+
+    const updatedUser = await storage.getUser(userId);
+    res.json({
+      path,
+      slot,
+      multiplier,
+      payout,
+      profit: payout - bet,
+      newBalance: updatedUser?.balance ?? debitedUser.balance,
     });
   });
 

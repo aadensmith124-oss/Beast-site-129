@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import {
   BookOpen,
+  CircleDot,
   CreditCard,
   Gift,
   Layers,
@@ -83,6 +84,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       links: [
         ...(features?.logs !== false ? [{ href: "/shop", label: "Logs", icon: FileText }] : []),
         { href: "/", label: "Cards", icon: CreditCard },
+        { href: "/games/plinko", label: "Plinko", icon: CircleDot },
         ...(features?.checker !== false ? [{ href: "/checker", label: "Checker", icon: Layers }] : []),
         ...(features?.reseller !== false ? [{ href: "/become-reseller", label: "Become Seller", icon: BookOpen }] : []),
       ],

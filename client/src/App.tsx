@@ -28,6 +28,7 @@ import BecomeResellerPage from "@/pages/BecomeSellerPage";
 import ProfilePage from "@/pages/ProfilePage";
 import SupportPage from "@/pages/SupportPage";
 import RedeemCodePage from "@/pages/RedeemCodePage";
+import PlinkoPage from "@/pages/PlinkoPage";
 
 function LoadingScreen() {
   return (
@@ -95,6 +96,7 @@ function Router() {
         <Route path="/ranks" component={RanksPage} />
         <Route path="/worker" component={WorkerDashboardPage} />
         <Route path="/cards" component={CardsPage} />
+        <Route path="/games/plinko" component={PlinkoPage} />
         <Route path="/checker" component={CheckerPage} />
         <Route path="/become-reseller" component={BecomeResellerPage} />
         <Route path="/profile" component={ProfilePage} />

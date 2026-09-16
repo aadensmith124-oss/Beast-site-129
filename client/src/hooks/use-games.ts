@@ -53,6 +53,31 @@ export function useGames() {
     onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
+  const playPlinko = useMutation({
+    mutationFn: async (betAmount: number) => {
+      const res = await fetch(api.games.plinko.path, {
+        method: api.games.plinko.method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ betAmount }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Game failed");
+      }
+      return api.games.plinko.responses[200].parse(await res.json());
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData([api.auth.me.path], (old: any) => ({ ...old, balance: data.newBalance }));
+      toast({
+        title: data.profit >= 0 ? "Plinko payout" : "Plinko result",
+        description: `${data.multiplier}x slot · ${data.profit >= 0 ? "+" : ""}$${(data.profit / 100).toFixed(2)}`,
+        variant: data.profit >= 0 ? "default" : "destructive",
+      });
+    },
+    onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
   const spinWheel = useMutation({
     mutationFn: async () => {
       const res = await fetch(api.games.spin.path, {
@@ -71,5 +96,5 @@ export function useGames() {
     onError: (err) => toast({ title: "Spin unavailable", description: err.message, variant: "destructive" }),
   });
 
-  return { playDice, playMines, spinWheel };
+  return { playDice, playMines, playPlinko, spinWheel };
 }

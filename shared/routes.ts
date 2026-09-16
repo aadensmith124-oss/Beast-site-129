@@ -204,6 +204,24 @@ export const api = {
         }),
       },
     },
+    plinko: {
+      method: 'POST' as const,
+      path: '/api/games/plinko',
+      input: z.object({
+        betAmount: z.number().int().min(1),
+      }),
+      responses: {
+        200: z.object({
+          path: z.array(z.number().int().min(0).max(1)),
+          slot: z.number().int().min(0).max(8),
+          multiplier: z.number(),
+          payout: z.number(),
+          profit: z.number(),
+          newBalance: z.number(),
+        }),
+        400: errorSchemas.validation,
+      },
+    },
     spin: {
       method: 'POST' as const,
       path: '/api/games/spin',
