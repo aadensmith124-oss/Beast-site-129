@@ -2731,7 +2731,7 @@ export async function registerRoutes(
       return res.status(400).json({ message: "No cards provided" });
     }
 
-    const costPerCard = 10;
+    const costPerCard = 15;
     const totalCost = cardList.length * costPerCard;
 
     const [dbUser] = await db.select().from(users).where(eq(users.id, userId));

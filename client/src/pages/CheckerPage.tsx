@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 
-function parseCardLine(line: string): { number: string; date: string; cvv: string } | null {
+function parseCardLine(line: string): { number: string; date: string; cvv: string; details?: string[] } | null {
   const cleaned = line.trim();
   if (!cleaned) return null;
   const parts = cleaned.split(/[|:,\s]+/).filter(Boolean);
   if (parts.length < 3) return null;
-  return { number: parts[0], date: parts[1], cvv: parts[2] };
+  return { number: parts[0], date: parts[1], cvv: parts[2], details: parts.slice(3) };
 }
 
 export default function CheckerPage() {
@@ -29,7 +29,7 @@ export default function CheckerPage() {
       .filter(Boolean) as { number: string; date: string; cvv: string }[];
   }, [input]);
 
-  const totalCost = cards.length * 0.10;
+  const totalCost = cards.length * 0.15;
   const balance = (user?.balance ?? 0) / 100;
 
   const checkMutation = useMutation({
@@ -78,7 +78,7 @@ export default function CheckerPage() {
             <CreditCard className="h-5 w-5 text-primary" />
             <h1 className="text-xl font-bold text-white">Card Checker</h1>
           </div>
-          <p className="text-xs text-white/45">Enter cards below — <span className="text-primary font-mono">$0.10</span> per card checked</p>
+          <p className="text-xs text-white/45">Enter cards below — <span className="text-primary font-mono">$0.15</span> per card checked</p>
         </div>
 
         {/* Balance row */}
@@ -90,7 +90,7 @@ export default function CheckerPage() {
         {/* Input */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-xs text-white/45 font-mono">number | date | cvv (one per line)</label>
+            <label className="text-xs text-white/45 font-mono">number | date | cvv | address | city | state | zip (one per line)</label>
             {input && (
               <button
                 onClick={() => { setInput(""); setResults([]); setHasChecked(false); }}
