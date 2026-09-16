@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Briefcase, Package, ShoppingBag, Plus, Trash2, ChevronRight, Loader2, ShieldX, CreditCard, Users, DollarSign } from "lucide-react";
+import { Briefcase, Package, ShoppingBag, Plus, Trash2, ChevronRight, Loader2, ShieldX, CreditCard, Users, DollarSign, Layers } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 const TABS = [
   { id: "products", label: "Products & Stock", Icon: Package },
   { id: "cards", label: "Cards", Icon: CreditCard },
+  { id: "bases", label: "Bases", Icon: Layers },
   { id: "orders", label: "Orders", Icon: ShoppingBag },
   { id: "users", label: "Add Balance", Icon: Users },
 ];
@@ -352,12 +353,105 @@ function CardsTab() {
   );
 }
 
+// ────────── BASES TAB ──────────
+function BasesTab() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [refundable, setRefundable] = useState(false);
+  const { data: bases = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/worker/card-bases"] });
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      if (!name.trim()) throw new Error("Base name is required");
+      const res = await apiRequest("POST", "/api/worker/card-bases", { name: name.trim(), refundable });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || "Failed to create base");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setName("");
+      setRefundable(false);
+      qc.invalidateQueries({ queryKey: ["/api/worker/card-bases"] });
+      toast({ title: "Base created" });
+    },
+    onError: (error: any) => toast({ title: "Error", description: error.message, variant: "destructive" }),
+  });
+
+  const base = bases[0];
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-sm font-bold text-white">Your Card Base</h2>
+        <p className="text-[10px] text-white/40 font-mono mt-1">Workers can create one base. Cards added to it are included in the profit estimate.</p>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+      ) : base ? (
+        <div className="bg-[#111] border border-white/10 rounded-xl p-4 space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-base font-bold text-white font-mono">{base.name}</p>
+              <p className="text-[10px] text-white/40 font-mono mt-1">{base.count} available · {base.soldCount ?? 0} sold</p>
+            </div>
+            {base.refundable && <Badge className="bg-green-500/15 text-green-400 border-green-500/25 text-[9px]">REFUNDABLE</Badge>}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-[#111]/5 border border-white/10 rounded-lg p-3">
+              <p className="text-[9px] uppercase tracking-widest text-white/35">Base revenue</p>
+              <p className="text-lg font-bold font-mono text-green-400 mt-1">${((base.revenue ?? base.profit ?? 0) / 100).toFixed(2)}</p>
+              <p className="text-[9px] text-white/30 mt-1">price × base valid rate</p>
+            </div>
+            <div className="bg-[#111]/5 border border-white/10 rounded-lg p-3">
+              <p className="text-[9px] uppercase tracking-widest text-white/35">Cards in stock</p>
+              <p className="text-lg font-bold font-mono text-white mt-1">{base.count}</p>
+              <p className="text-[9px] text-white/30 mt-1">{base.soldCount ?? 0} sold cards</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-[#111] border border-white/10 rounded-xl p-4 space-y-3">
+          <p className="text-xs font-bold text-white/45 uppercase tracking-widest">Create your one base</p>
+          <Input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Base name (e.g. MY BASE)"
+            className="bg-[#111]/5 border-white/10 h-8 text-sm"
+            data-testid="input-worker-base-name"
+          />
+          <label className="flex items-center gap-2 text-xs text-white/60 cursor-pointer">
+            <input type="checkbox" checked={refundable} onChange={e => setRefundable(e.target.checked)} className="h-3.5 w-3.5 accent-primary" data-testid="checkbox-worker-base-refundable" />
+            Refundable base
+          </label>
+          <Button
+            size="sm"
+            className="w-full h-8 text-xs"
+            onClick={() => createMutation.mutate()}
+            disabled={createMutation.isPending || !name.trim()}
+            data-testid="btn-create-worker-base"
+          >
+            {createMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Plus className="h-3.5 w-3.5 mr-1" />Create Base</>}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ────────── ORDERS TAB ──────────
 function OrdersTab() {
   const [search, setSearch] = useState("");
-  const { data: orders = [], isLoading } = useQuery<any[]>({
-    queryKey: ["/api/admin/orders"],
-    queryFn: async () => { const res = await fetch("/api/admin/orders", { credentials: "include" }); if (!res.ok) throw new Error("Failed"); return res.json(); },
+  const { data: orders = [], isLoading, isError } = useQuery<any[]>({
+    queryKey: ["/api/worker/orders"],
+    queryFn: async () => {
+      const res = await fetch("/api/worker/orders", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load worker orders");
+      return res.json();
+    },
     refetchInterval: 15000,
   });
   const filtered = orders.filter((o: any) => !search || o.orderId?.toLowerCase().includes(search.toLowerCase()) || o.user?.username?.toLowerCase().includes(search.toLowerCase()));
@@ -383,7 +477,11 @@ function OrdersTab() {
             </div>
           </div>
         ))}
-        {filtered.length === 0 && <p className="text-center text-xs text-white/40 py-8 font-mono">No orders found</p>}
+         {isError ? (
+           <p className="text-center text-xs text-red-400/80 py-8 font-mono">Orders could not be loaded. Refresh and try again.</p>
+         ) : filtered.length === 0 ? (
+           <p className="text-center text-xs text-white/40 py-8 font-mono">No orders found</p>
+         ) : null}
       </div>
     </div>
   );
@@ -512,7 +610,7 @@ export default function WorkerDashboardPage() {
       </div>
 
       {/* Tabs */}
-      <div className="grid grid-cols-4 gap-1 bg-[#0d0d0d] rounded-lg p-1">
+      <div className="grid grid-cols-5 gap-1 bg-[#0d0d0d] rounded-lg p-1">
         {TABS.map(({ id, label, Icon }) => (
           <button
             key={id}
@@ -528,6 +626,7 @@ export default function WorkerDashboardPage() {
 
       {activeTab === "products" && <ProductsTab />}
       {activeTab === "cards" && <CardsTab />}
+      {activeTab === "bases" && <BasesTab />}
       {activeTab === "orders" && <OrdersTab />}
       {activeTab === "users" && <UsersBalanceTab />}
     </div>

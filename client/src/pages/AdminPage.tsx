@@ -2940,10 +2940,28 @@ function extractZipPreview(line: string): string {
   return "";
 }
 
+function extractStatePreview(line: string): string {
+  const states = new Set([
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA",
+    "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+    "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT",
+    "VA", "WA", "WV", "WI", "WY", "DC",
+  ]);
+  const tokens = line.split(/[|\t:;,]+/).map(t => t.trim().toUpperCase()).filter(Boolean);
+  return tokens.find(token => states.has(token)) ?? "";
+}
+
+function countryFlagPreview(code: string): string {
+  if (!code || code.length !== 2) return "";
+  return String.fromCodePoint(...code.toUpperCase().split("").map(c => 0x1F1E6 - 65 + c.charCodeAt(0)));
+}
+
 function AdminBasesTab() {
   const { toast } = useToast();
   const qc = queryClient;
   const [newBaseName, setNewBaseName] = useState("");
+  const [newBaseRefundable, setNewBaseRefundable] = useState(false);
+  const [rateDrafts, setRateDrafts] = useState<Record<number, string>>({});
   const [expandedBase, setExpandedBase] = useState<number | null>(null);
   const [editingBaseId, setEditingBaseId] = useState<number | null>(null);
   const [editingBaseName, setEditingBaseName] = useState("");
@@ -2962,11 +2980,19 @@ function AdminBasesTab() {
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!newBaseName.trim()) throw new Error("Name required");
-      const res = await apiRequest("POST", "/api/admin/card-bases", { name: newBaseName.trim() });
+      const res = await apiRequest("POST", "/api/admin/card-bases", {
+        name: newBaseName.trim(),
+        refundable: newBaseRefundable,
+      });
       if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
       return res.json();
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/card-bases"] }); setNewBaseName(""); toast({ title: "Base created" }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/card-bases"] });
+      setNewBaseName("");
+      setNewBaseRefundable(false);
+      toast({ title: "Base created" });
+    },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
@@ -2982,6 +3008,34 @@ function AdminBasesTab() {
       setEditingBaseId(null);
       setEditingBaseName("");
       toast({ title: "Base renamed" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const refundableMutation = useMutation({
+    mutationFn: async ({ id, name, refundable }: { id: number; name: string; refundable: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/admin/card-bases/${id}`, { name, refundable });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/card-bases"] });
+      toast({ title: "Refundability updated" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const rateMutation = useMutation({
+    mutationFn: async ({ id, name, refundable, hrPercent }: { id: number; name: string; refundable: boolean; hrPercent: number }) => {
+      const res = await apiRequest("PATCH", `/api/admin/card-bases/${id}`, { name, refundable, hrPercent });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message || "Failed to update valid rate"); }
+      return res.json();
+    },
+    onSuccess: (updated: any) => {
+      setRateDrafts(drafts => ({ ...drafts, [updated.id]: String(updated.hrPercent) }));
+      qc.invalidateQueries({ queryKey: ["/api/card-bases"] });
+      qc.invalidateQueries({ queryKey: ["/api/cards"] });
+      toast({ title: "Base valid rate updated" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -3020,6 +3074,16 @@ function AdminBasesTab() {
             className="bg-[#111]/5 border-white/10 text-sm flex-1"
             data-testid="input-base-name"
           />
+          <label className="flex items-center gap-2 text-xs text-white/60 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={newBaseRefundable}
+              onChange={e => setNewBaseRefundable(e.target.checked)}
+              className="h-3.5 w-3.5 accent-primary"
+              data-testid="checkbox-base-refundable"
+            />
+            Refundable base
+          </label>
           <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !newBaseName.trim()} size="sm" className="h-9" data-testid="btn-create-base">
             {createMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Create"}
           </Button>
@@ -3071,19 +3135,52 @@ function AdminBasesTab() {
                       className="text-left w-full"
                       data-testid={`btn-expand-base-${b.id}`}
                     >
-                      <p className="text-sm font-bold text-white font-mono">{b.name}</p>
-                      <p className="text-[10px] text-white/40">{b.count} card{b.count !== 1 ? "s" : ""} in stock</p>
+                       <div className="flex items-center gap-2">
+                         <p className="text-sm font-bold text-white font-mono">{b.name}</p>
+                         {b.refundable && <Badge className="bg-green-500/15 text-green-400 border-green-500/25 text-[9px]">REFUNDABLE</Badge>}
+                       </div>
+                       <p className="text-[10px] text-white/40">{b.count} card{b.count !== 1 ? "s" : ""} in stock · {b.hrPercent ?? 80}% valid rate · ${((b.profit ?? 0) / 100).toFixed(2)} profit</p>
                     </button>
                   )}
                 </div>
                 {editingBaseId !== b.id && (
                   <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px] text-white/40 uppercase tracking-wider">rate</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={rateDrafts[b.id] ?? String(b.hrPercent ?? 80)}
+                        onChange={e => setRateDrafts(drafts => ({ ...drafts, [b.id]: e.target.value }))}
+                        className="w-14 h-7 bg-[#111]/5 border-white/10 text-[10px] font-mono px-1.5"
+                        data-testid={`input-base-valid-rate-${b.id}`}
+                      />
+                      <span className="text-[10px] text-white/45">%</span>
+                      <button
+                        onClick={() => rateMutation.mutate({ id: b.id, name: b.name, refundable: Boolean(b.refundable), hrPercent: Number(rateDrafts[b.id] ?? b.hrPercent ?? 80) })}
+                        disabled={rateMutation.isPending}
+                        className="text-[9px] font-mono px-1.5 py-1 rounded border border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-50"
+                        data-testid={`btn-save-base-valid-rate-${b.id}`}
+                      >
+                        save
+                      </button>
+                    </div>
                     <button
                       onClick={() => { setEditingBaseId(b.id); setEditingBaseName(b.name); setExpandedBase(null); }}
                       className="text-[10px] font-mono px-2 py-1 rounded border border-white/10 text-white/45 hover:border-white/25 hover:text-white transition-all"
                       data-testid={`btn-rename-base-${b.id}`}
                     >
                       rename
+                    </button>
+                    <button
+                      onClick={() => refundableMutation.mutate({ id: b.id, name: b.name, refundable: !b.refundable })}
+                      disabled={refundableMutation.isPending}
+                      className={`text-[10px] font-mono px-2 py-1 rounded border transition-all ${b.refundable ? "border-green-500/30 text-green-400 hover:bg-green-500/10" : "border-white/10 text-white/45 hover:border-white/20"}`}
+                      data-testid={`btn-toggle-refundable-${b.id}`}
+                    >
+                      {b.refundable ? "refundable" : "not refundable"}
                     </button>
                     <button
                       onClick={() => setExpandedBase(expandedBase === b.id ? null : b.id)}
@@ -3117,7 +3214,7 @@ function AdminBasesTab() {
                             <div className="flex items-center gap-2">
                               <span className="text-[10px] font-mono bg-[#111]/5 border border-white/10 px-1.5 py-0.5 rounded text-white/45">{bin}</span>
                               {zip && <span className="text-[10px] text-white/40 font-mono">ZIP {zip}</span>}
-                              <span className="text-[10px] text-white/40">{card.hrPercent ?? 80}% HR</span>
+                              <span className="text-[10px] text-white/40">{b.hrPercent ?? 80}% valid rate</span>
                             </div>
                             {card.extras && <p className="text-[9px] text-white/30 font-mono truncate">{card.extras.substring(0, 55)}...</p>}
                           </div>
@@ -3231,9 +3328,19 @@ function AdminCardsSection() {
           >
             <option value="">— Select base —</option>
             {(bases ?? []).map((b: any) => (
-              <option key={b.id} value={String(b.id)}>{b.name}</option>
+               <option key={b.id} value={String(b.id)}>
+                 {b.name}{b.refundable ? " · refundable" : ""}
+               </option>
             ))}
           </select>
+           {selectedBaseId && (() => {
+             const selectedBase = (bases ?? []).find((b: any) => String(b.id) === selectedBaseId);
+             return selectedBase ? (
+               <p className={`text-[10px] font-mono ${selectedBase.refundable ? "text-green-400/75" : "text-white/35"}`}>
+                 {selectedBase.refundable ? "✓ Refundable base" : "Not refundable"}
+               </p>
+             ) : null;
+           })()}
         </div>
 
         <div className="space-y-1">
@@ -3283,29 +3390,48 @@ function AdminCardsSection() {
             (cards ?? []).map((card: any) => {
               const cBin = (card.cardNumber || "").replace(/\D/g, "").substring(0, 6);
               const zip = extractZipPreview(card.extras ?? "");
+               const state = extractStatePreview(card.extras ?? "");
+               const countryCode = card.binData?.countryCode ?? "";
+               const country = card.binData?.country ?? card.country ?? "Unknown";
+               const base = (bases ?? []).find((b: any) => b.id === card.baseId);
               return (
-                <div key={card.id} className="bg-[#111] border border-white/10 rounded-xl px-4 py-3 flex items-center justify-between">
-                  <div className="space-y-0.5 min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      {card.baseName && <span className="text-[10px] font-mono font-bold text-primary/70">{card.baseName}</span>}
-                      <span className="text-[10px] font-mono bg-[#111]/5 border border-white/10 px-1.5 py-0.5 rounded text-white/45">{cBin}</span>
-                      {zip && <span className="text-[10px] text-white/40 font-mono">ZIP {zip}</span>}
-                    </div>
-                    <p className="text-[10px] text-white/40 font-mono">{card.hrPercent ?? 80}% HR</p>
-                    {card.extras && <p className="text-[9px] text-white/30 truncate font-mono">{card.extras.substring(0, 55)}...</p>}
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0 ml-2">
-                    <span className="font-mono text-sm text-white">${(card.price / 100).toFixed(2)}</span>
-                    <button
-                      onClick={() => deleteMutation.mutate(card.id)}
-                      disabled={deleteMutation.isPending}
-                      className="text-white/30 hover:text-destructive transition-colors"
-                      data-testid={`btn-delete-card-${card.id}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
+                 <div key={card.id} className="overflow-x-auto bg-[#111] border border-white/10 rounded-xl">
+                   <div className="min-w-[620px]">
+                     <div className="grid grid-cols-[0.8fr_0.8fr_1.1fr_1.2fr_0.8fr_0.8fr] gap-3 px-4 py-2 border-b border-white/10 text-[9px] font-bold uppercase tracking-widest text-white/35">
+                       <span>State</span>
+                       <span>ZIP</span>
+                       <span>Country</span>
+                       <span>Base</span>
+                       <span>Base rate</span>
+                       <span>Refundable</span>
+                     </div>
+                     <div className="grid grid-cols-[0.8fr_0.8fr_1.1fr_1.2fr_0.8fr_0.8fr] gap-3 items-center px-4 py-3">
+                       <span className="text-xs font-mono text-white/70">{state || "—"}</span>
+                       <span className="text-xs font-mono text-white/55">{zip || "—"}</span>
+                       <span className="flex items-center gap-1.5 text-xs text-white/65 truncate" title={country}>
+                         <span className="text-base leading-none">{countryFlagPreview(countryCode)}</span>
+                         {countryCode || country}
+                       </span>
+                       <span className="text-xs font-mono text-primary/75 truncate">{card.baseName || "—"}</span>
+                        <span className="text-xs font-mono text-primary/75">{base?.hrPercent ?? 80}%</span>
+                       <span className={base?.refundable ? "text-green-400 text-lg" : "text-white/25"}>{base?.refundable ? "✓" : "—"}</span>
+                     </div>
+                     <div className="flex items-center justify-between gap-3 px-4 pb-3">
+                       <p className="text-[9px] text-white/30 truncate font-mono">{card.extras || "No item details"}</p>
+                       <div className="flex items-center gap-3 shrink-0">
+                         <span className="font-mono text-sm text-white">${(card.price / 100).toFixed(2)}</span>
+                         <button
+                           onClick={() => deleteMutation.mutate(card.id)}
+                           disabled={deleteMutation.isPending}
+                           className="text-white/30 hover:text-destructive transition-colors"
+                           data-testid={`btn-delete-card-${card.id}`}
+                         >
+                           <Trash2 className="h-4 w-4" />
+                         </button>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
               );
             })
           )}

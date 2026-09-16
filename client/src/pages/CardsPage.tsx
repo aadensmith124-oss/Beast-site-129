@@ -76,6 +76,18 @@ function extractCity(extras: string): string {
   return "";
 }
 
+function extractState(extras: string): string {
+  if (!extras) return "";
+  const states = new Set([
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA",
+    "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+    "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT",
+    "VA", "WA", "WV", "WI", "WY", "DC",
+  ]);
+  const tokens = extras.split(/[|\t:;,]+/).map(token => token.trim().toUpperCase()).filter(Boolean);
+  return tokens.find(token => states.has(token)) ?? "";
+}
+
 function hasBilling(extras: string): boolean {
   return (extras ?? "").split(/[|\t]/).length >= 5;
 }
@@ -385,7 +397,7 @@ export default function CardsPage() {
         ) : filteredCards.length === 0 ? (
           <div className="py-12 text-center text-xs text-white/35">No cards available</div>
         ) : (
-          <table className="w-full text-xs border-collapse" style={{ minWidth: "520px" }}>
+           <table className="w-full text-xs border-collapse" style={{ minWidth: "980px" }}>
             <thead>
               <tr className="border-b border-white/10">
                 <th className="w-8 px-2.5 py-2 text-left">
@@ -398,11 +410,15 @@ export default function CardsPage() {
                   />
                 </th>
                 <th className="px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-white/35">BIN</th>
-                <th className="px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-white/35">BASE</th>
+                 <th className="px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-white/35">BRAND</th>
                 <th className="px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-white/35">TYPE</th>
-                <th className="px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-white/35">BANK</th>
+                 <th className="px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-white/35">ISSUER</th>
+                 <th className="px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-white/35">STATE</th>
                 <th className="px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-white/35">ZIP</th>
-                <th className="px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-white/35">Country</th>
+                 <th className="px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-white/35">COUNTRY</th>
+                 <th className="px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-white/35">BASE</th>
+                 <th className="px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-white/35">VALIDATION</th>
+                 <th className="px-2.5 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-white/35">REFUNDABLE</th>
                 <th className="px-2.5 py-2 text-right text-[10px] font-bold uppercase tracking-wider text-white/35">$</th>
                 <th className="px-2.5 py-2 text-right text-[10px] font-bold uppercase tracking-wider text-white/35">BUY</th>
               </tr>
@@ -430,10 +446,13 @@ function CardTableRow({ card, inCart, onToggleCart }: { card: any; inCart: boole
 
   const bin = extractBin(card.cardNumber);
   const zip = extractZip(card.extras ?? "");
+  const state = extractState(card.extras ?? "");
   const flag = countryFlag(card.binData?.countryCode ?? "");
-  const ccCountry = countryName(card.binData?.countryCode ?? "");
+  const countryCode = card.binData?.countryCode ?? "";
+  const ccCountry = countryName(countryCode) || card.country || "Unknown";
   const cardType = formatType(card.binData);
   const bank = formatBank(card.binData);
+  const brand = card.binData?.brand || "—";
 
   const purchaseMutation = useMutation({
     mutationFn: async () => {
@@ -468,20 +487,34 @@ function CardTableRow({ card, inCart, onToggleCart }: { card: any; inCart: boole
       <td className="px-2.5 py-2">
         <span className="font-bold font-mono text-xs text-white">{bin || "—"}</span>
       </td>
-      <td className="px-2.5 py-2 max-w-[100px]">
-        <span className="text-[10px] text-white/50 truncate block">{card.baseName || "—"}</span>
+       <td className="px-2.5 py-2 max-w-[110px]">
+         <span className="text-[10px] text-white/60 truncate block">{brand}</span>
       </td>
       <td className="px-2.5 py-2">
         <span className="text-[11px] font-mono text-white/55">{cardType || "—"}</span>
       </td>
-      <td className="px-2.5 py-2 max-w-[120px]">
+       <td className="px-2.5 py-2 max-w-[140px]">
         <span className="text-[11px] text-white/55 truncate block">{bank || "—"}</span>
       </td>
+       <td className="px-2.5 py-2">
+         <span className="text-[11px] font-mono text-white/55">{state || "—"}</span>
+       </td>
       <td className="px-2.5 py-2">
         <span className="text-[11px] font-mono text-white/55">{zip || "—"}</span>
       </td>
       <td className="px-2.5 py-2">
-        <span className="text-base leading-none">{flag || "—"}</span>
+         <span className="text-base leading-none" title={ccCountry}>{flag || countryCode || "—"}</span>
+       </td>
+       <td className="px-2.5 py-2 max-w-[110px]">
+         <span className="text-[10px] text-white/50 truncate block">{card.baseName || "—"}</span>
+       </td>
+       <td className="px-2.5 py-2">
+         <span className="text-[11px] font-mono font-bold text-white/65">{card.hrPercent ?? 80}%</span>
+       </td>
+       <td className="px-2.5 py-2">
+         <span className={card.baseRefundable ? "text-green-400 text-lg leading-none" : "text-white/25"} title={card.baseRefundable ? "Refundable" : "Not refundable"}>
+           {card.baseRefundable ? "✓" : "—"}
+         </span>
       </td>
       <td className="px-2.5 py-2 text-right">
         <span className="font-bold text-xs text-white">${(card.price / 100).toFixed(2)}</span>

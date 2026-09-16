@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Redirect, useLocation } from "wouter";
-import { Loader2, Eye, EyeOff, RefreshCw, CreditCard } from "lucide-react";
+import { Loader2, Eye, EyeOff, RefreshCw, Turtle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 /* ── SVG Captcha ──────────────────────────────────────────── */
@@ -403,7 +403,7 @@ export default function AuthPage() {
       <main className="flex-1 w-full max-w-[360px] mx-auto px-5 pt-8 sm:pt-10">
         <div className="flex flex-col items-center mb-6" aria-label="TurtleCC">
           <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#22d3ee]/50 bg-[#121212] shadow-[0_0_22px_rgba(34,211,238,0.16)]">
-            <CreditCard className="h-5 w-5 text-[#22d3ee]" strokeWidth={1.6} />
+            <Turtle className="h-5 w-5 text-[#22d3ee]" strokeWidth={1.6} />
           </div>
           <div className="mt-2 text-base font-semibold tracking-tight text-white">TurtleCC</div>
         </div>

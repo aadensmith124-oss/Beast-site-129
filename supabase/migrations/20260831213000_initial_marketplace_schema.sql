@@ -74,6 +74,9 @@ CREATE TABLE IF NOT EXISTS public.orders (
 CREATE TABLE IF NOT EXISTS public.card_bases (
   id serial PRIMARY KEY,
   name text NOT NULL UNIQUE,
+  refundable boolean NOT NULL DEFAULT false,
+  hr_percent integer NOT NULL DEFAULT 80,
+  owner_id integer REFERENCES public.users(id),
   created_at timestamp NOT NULL DEFAULT now()
 );
 

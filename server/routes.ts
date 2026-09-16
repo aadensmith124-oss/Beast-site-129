@@ -9,7 +9,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { createNowPaymentsInvoice, getNowPaymentsInvoice, mapNowPaymentsStatus, verifyNowPaymentsWebhook } from "./nowpayments.js";
 import { settleCryptoPayment } from "./crypto-settlement.js";
 import { hashPassword, comparePassword } from "./auth.js";
-import { cryptoPayments, orders, orderItems, verifications, variants, userIps, users, mails, mailReads, discountCodes, transactions, stockItems, cards, achs, products, insertAnnouncementSchema } from "../shared/schema.js";
+import { cryptoPayments, orders, orderItems, verifications, variants, userIps, users, mails, mailReads, discountCodes, transactions, stockItems, cards, cardBases, achs, products, insertAnnouncementSchema } from "../shared/schema.js";
 import { db } from "./db.js";
 import { eq, and, ne, desc, sql } from "drizzle-orm";
 import { MAX_LICENSE_FILE_BYTES, parseLicenseKeyFile } from "./license-key-file.js";
@@ -173,9 +173,10 @@ export async function registerRoutes(
   // Auth setup (handles /api/login, /api/register, /api/logout, /api/user)
   setupAuth(app);
 
-  // Every /api/admin route must pass this server-side gate. Individual routes
-  // may apply narrower checks, but a missing per-route check cannot grant access.
-  app.use("/api/admin", adminLimiter, requireAdmin);
+  // Keep the admin rate limit, but let each endpoint apply its own access rule.
+  // Some worker dashboard endpoints intentionally live under /api/admin for
+  // backwards compatibility and use isAdminOrWorker instead.
+  app.use("/api/admin", adminLimiter);
 
   // Public announcements
   app.get("/api/announcements", async (req, res) => {
@@ -1201,11 +1202,19 @@ export async function registerRoutes(
   app.get("/api/admin/orders", async (req, res) => {
     if (!isAdminOrWorker(req)) return res.status(401).json({ message: "Unauthorized" });
     const allOrders = await storage.getAllOrders();
-    // Show all orders — include manual deposit orders so admin can confirm them
-    const productOrders = allOrders.filter((o: any) =>
-      o.items.length > 0 || o.total > 0 || ["CashApp", "Venmo", "Chime", "Zelle"].includes(o.paymentMethod)
-    );
-    res.json(productOrders);
+    res.json(allOrders);
+  });
+
+  // Worker order feed. Keep this separate from the admin route so the worker
+  // dashboard does not depend on an admin-only URL or admin action handlers.
+  app.get("/api/worker/orders", async (req, res) => {
+    if (!isAdminOrWorker(req)) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      res.json(await storage.getAllOrders());
+    } catch (error) {
+      console.error("[worker orders] failed to load:", error);
+      res.status(500).json({ message: "Unable to load orders right now." });
+    }
   });
 
   // Admin/Worker - Get all users
@@ -1570,28 +1579,78 @@ export async function registerRoutes(
   // === CARD BASES ===
   app.get("/api/card-bases", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
-    const bases = await storage.getCardBasesWithCount();
+    const user = req.user as any;
+    const bases = user?.role === "admin"
+      ? await storage.getCardBasesWithCount()
+      : user?.isWorker
+        ? await storage.getCardBasesWithCount(Number(user.id))
+        : [];
     res.json(bases);
   });
 
   app.post("/api/admin/card-bases", async (req, res) => {
-    if (!req.isAuthenticated() || (req.user as any).role !== "admin") return res.status(401).json({ message: "Unauthorized" });
-    const { name } = req.body;
+    if (!isAdminOrWorker(req)) return res.status(401).json({ message: "Unauthorized" });
+    const { name, refundable } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: "Name required" });
     try {
-      const base = await storage.createCardBase(name.trim());
+      const user = req.user as any;
+      const ownerId = user.role === "admin" ? undefined : Number(user.id);
+      if (ownerId !== undefined) {
+        const ownedBases = await storage.getCardBasesWithCount(ownerId);
+        if (ownedBases.length >= 1) {
+          return res.status(409).json({ message: "Workers can only create one card base" });
+        }
+      }
+      const base = await storage.createCardBase(name.trim(), Boolean(refundable), ownerId);
       res.status(201).json(base);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
     }
   });
 
-  app.patch("/api/admin/card-bases/:id", async (req, res) => {
-    if (!req.isAuthenticated() || (req.user as any).role !== "admin") return res.status(401).json({ message: "Unauthorized" });
-    const { name } = req.body;
+  app.post("/api/worker/card-bases", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any)?.isWorker !== true) {
+      return res.status(403).json({ message: "Worker access required" });
+    }
+    const { name, refundable } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: "Name required" });
     try {
-      const base = await storage.updateCardBase(Number(req.params.id), name.trim());
+      const ownerId = Number((req.user as any).id);
+      const ownedBases = await storage.getCardBasesWithCount(ownerId);
+      if (ownedBases.length >= 1) {
+        return res.status(409).json({ message: "Workers can only create one card base" });
+      }
+      const base = await storage.createCardBase(name.trim(), Boolean(refundable), ownerId);
+      res.status(201).json(base);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
+  });
+
+  app.get("/api/worker/card-bases", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any)?.isWorker !== true) {
+      return res.status(403).json({ message: "Worker access required" });
+    }
+    const bases = await storage.getCardBasesWithCount(Number((req.user as any).id));
+    res.json(bases.map((base: any) => ({ ...base, revenue: base.profit })));
+  });
+
+  app.patch("/api/admin/card-bases/:id", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") return res.status(401).json({ message: "Unauthorized" });
+    const { name, refundable } = req.body;
+    if (!name?.trim()) return res.status(400).json({ message: "Name required" });
+    const hasHrPercent = req.body.hrPercent !== undefined;
+    const hrPercent = Number(req.body.hrPercent);
+    if (hasHrPercent && (!Number.isFinite(hrPercent) || !Number.isInteger(hrPercent) || hrPercent < 0 || hrPercent > 100)) {
+      return res.status(400).json({ message: "Valid rate must be a whole number from 0 to 100" });
+    }
+    try {
+      const base = await storage.updateCardBase(
+        Number(req.params.id),
+        name.trim(),
+        typeof refundable === "boolean" ? refundable : undefined,
+        hasHrPercent ? hrPercent : undefined,
+      );
       res.json(base);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -1609,19 +1668,37 @@ export async function registerRoutes(
   });
 
   app.get("/api/admin/card-bases/:id/cards", async (req, res) => {
-    if (!req.isAuthenticated() || (req.user as any).role !== "admin") return res.status(401).json({ message: "Unauthorized" });
-    const cards = await storage.getCardsByBase(Number(req.params.id));
+    if (!isAdminOrWorker(req)) return res.status(401).json({ message: "Unauthorized" });
+    const requestedBaseId = Number(req.params.id);
+    const user = req.user as any;
+    if (user.role !== "admin") {
+      const [ownedBase] = await db.select({ id: cardBases.id })
+        .from(cardBases)
+        .where(and(eq(cardBases.id, requestedBaseId), eq(cardBases.ownerId, Number(user.id))));
+      if (!ownedBase) return res.status(403).json({ message: "You do not own this base" });
+    }
+    const cards = await storage.getCardsByBase(requestedBaseId);
     res.json(cards);
   });
 
   app.get("/api/cards", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     const baseId = req.query.baseId ? Number(req.query.baseId) : null;
-    const baseFilter = baseId ? sql`AND c.base_id = ${baseId}` : sql``;
+    const user = req.user as any;
+    let baseFilter = baseId ? sql`AND c.base_id = ${baseId}` : sql``;
+    if (user?.role !== "admin" && user?.isWorker) {
+      const [ownedBase] = await db.select({ id: cardBases.id })
+        .from(cardBases)
+        .where(eq(cardBases.ownerId, Number(user.id)));
+      if (!ownedBase) return res.json([]);
+      if (baseId && baseId !== ownedBase.id) return res.status(403).json({ message: "You do not own this base" });
+      baseFilter = sql`AND c.base_id = ${ownedBase.id}`;
+    }
     const { rows } = await db.execute(sql`
       SELECT c.id, c.card_number, c.masked_card, c.expiry, c.cvv, c.country, c.extras,
              c.price, c.hr_percent, c.is_sold, c.is_first_hand, c.user_id, c.created_at, c.bin_data,
-             c.base_id, cb.name as base_name
+             c.base_id, cb.name as base_name, cb.refundable as base_refundable,
+             cb.hr_percent as base_hr_percent
       FROM cards c
       LEFT JOIN card_bases cb ON cb.id = c.base_id
       WHERE c.is_sold = false ${baseFilter}
@@ -1637,7 +1714,12 @@ export async function registerRoutes(
         seenBins.add(bin);
         lookupBin(bin).then(async (data) => {
           if (data?.bank || data?.scheme || data?.type) {
-            await db.execute(sql`UPDATE cards SET bin_data = ${JSON.stringify(data)}::jsonb WHERE card_number LIKE ${bin + '%'} AND bin_data IS NULL`);
+            await db.execute(sql`
+              UPDATE cards
+              SET bin_data = ${JSON.stringify(data)}::jsonb,
+                  country = COALESCE(NULLIF(${data.country ?? ""}, ''), country)
+              WHERE card_number LIKE ${bin + '%'} AND bin_data IS NULL
+            `);
           }
         }).catch(() => {});
       }
@@ -1645,11 +1727,12 @@ export async function registerRoutes(
 
     res.json(rows.map((r: any) => ({
       id: r.id, cardNumber: r.card_number, maskedCard: r.masked_card,
-      expiry: r.expiry, cvv: r.cvv, country: r.country, extras: r.extras,
-      price: r.price, hrPercent: r.hr_percent ?? 80, isSold: r.is_sold, isFirstHand: r.is_first_hand,
+       expiry: r.expiry, cvv: r.cvv, country: r.bin_data?.country ?? r.country, extras: r.extras,
+      price: r.price, hrPercent: r.base_hr_percent ?? 80, isSold: r.is_sold, isFirstHand: r.is_first_hand,
       userId: r.user_id, createdAt: r.created_at,
       binData: r.bin_data ?? null,
-      baseId: r.base_id ?? null, baseName: r.base_name ?? null,
+       baseId: r.base_id ?? null, baseName: r.base_name ?? null,
+       baseRefundable: Boolean(r.base_refundable),
     })));
   });
 
@@ -1686,8 +1769,20 @@ export async function registerRoutes(
       return res.status(400).json({ message: "Full item is required" });
     }
 
-    const baseId = req.body.baseId ? Number(req.body.baseId) : undefined;
+    const baseId = req.body.baseId ? Number(req.body.baseId) : 0;
     const priceCents = Math.round(parseFloat(req.body.price || "0") * 100);
+    const user = req.user as any;
+
+    if (!Number.isInteger(baseId) || baseId <= 0) {
+      return res.status(400).json({ message: "A valid base is required" });
+    }
+    const [selectedBase] = await db.select({ id: cardBases.id, ownerId: cardBases.ownerId })
+      .from(cardBases)
+      .where(eq(cardBases.id, baseId));
+    if (!selectedBase) return res.status(404).json({ message: "Base not found" });
+    if (user.role !== "admin" && selectedBase.ownerId !== Number(user.id)) {
+      return res.status(403).json({ message: "Workers can only add cards to their own base" });
+    }
 
     const createdCards: any[] = [];
 
@@ -1720,7 +1815,7 @@ export async function registerRoutes(
         price: priceCents,
         isFirstHand: false,
         hrPercent: 80,
-        ...(baseId ? { baseId } : {}),
+         baseId,
       } as any);
 
       // Save binData to DB immediately so it's always available
@@ -1777,7 +1872,17 @@ export async function registerRoutes(
 
   app.delete("/api/admin/cards/:id", async (req, res) => {
     if (!isAdminOrWorker(req)) return res.status(401).json({ message: "Unauthorized" });
-    await storage.deleteCard(Number(req.params.id));
+    const card = await storage.getCard(Number(req.params.id));
+    const user = req.user as any;
+    if (!card) return res.status(404).json({ message: "Card not found" });
+    if (user.role !== "admin") {
+      const [ownedBase] = card.baseId
+        ? await db.select({ id: cardBases.id }).from(cardBases)
+            .where(and(eq(cardBases.id, card.baseId), eq(cardBases.ownerId, Number(user.id))))
+        : [];
+      if (!ownedBase) return res.status(403).json({ message: "You do not own this card" });
+    }
+    await storage.deleteCard(card.id);
     res.json({ success: true });
   });
 
