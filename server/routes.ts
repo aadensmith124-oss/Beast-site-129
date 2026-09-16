@@ -14,6 +14,7 @@ import { db } from "./db.js";
 import { eq, and, ne, desc, sql } from "drizzle-orm";
 import { MAX_LICENSE_FILE_BYTES, parseLicenseKeyFile } from "./license-key-file.js";
 import { formatOrdersAsText } from "./order-export.js";
+import { authorizeAndVoidCard, getAuthorizeNetClientConfig, getAuthorizeNetConfig } from "./authorize-net.js";
 import {
   approveVouch,
   bindVouchToken,
@@ -2723,61 +2724,70 @@ export async function registerRoutes(
   });
 
   // === CARD CHECKER ===
+  app.get("/api/checker/config", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const config = getAuthorizeNetClientConfig();
+    if (!config) {
+      return res.status(503).json({ message: "Authorize.net checker is not configured" });
+    }
+    res.json(config);
+  });
+
   app.post("/api/checker/check", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     const userId = (req.user as any).id;
     const { cards: cardList } = req.body;
-    if (!Array.isArray(cardList) || cardList.length === 0) {
-      return res.status(400).json({ message: "No cards provided" });
+    if (!Array.isArray(cardList) || cardList.length === 0 || cardList.length > 10) {
+      return res.status(400).json({ message: "Provide between 1 and 10 tokenized cards" });
+    }
+    if (cardList.some((card: any) => (
+      !card
+      || typeof card.dataDescriptor !== "string"
+      || typeof card.dataValue !== "string"
+      || card.dataDescriptor.length > 200
+      || card.dataValue.length > 5000
+    ))) {
+      return res.status(400).json({ message: "Invalid payment token" });
     }
 
     const costPerCard = 15;
     const totalCost = cardList.length * costPerCard;
 
-    const [dbUser] = await db.select().from(users).where(eq(users.id, userId));
-    if (!dbUser || dbUser.balance < totalCost) {
+    if (!getAuthorizeNetConfig()) {
+      return res.status(503).json({ message: "Authorize.net checker is not configured. Contact admin." });
+    }
+
+    const [updatedUser] = await db.update(users)
+      .set({ balance: sql`balance - ${totalCost}` })
+      .where(and(eq(users.id, userId), sql`balance >= ${totalCost}`))
+      .returning({ balance: users.balance });
+    if (!updatedUser) {
+      const [dbUser] = await db.select({ balance: users.balance }).from(users).where(eq(users.id, userId));
       return res.status(400).json({ message: `Insufficient balance. Need $${(totalCost / 100).toFixed(2)}, have $${((dbUser?.balance ?? 0) / 100).toFixed(2)}` });
     }
 
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey) return res.status(500).json({ message: "Card checker not configured. Contact admin." });
-
-    await db.update(users).set({ balance: sql`balance - ${totalCost}` }).where(eq(users.id, userId));
     await db.insert(transactions).values({
       userId, amount: -totalCost, type: "purchase",
       description: `Card checker — ${cardList.length} card${cardList.length !== 1 ? "s" : ""}`,
       paymentMethod: "Wallet",
     });
 
-    const { default: Stripe } = await import("stripe");
-    const stripe = new Stripe(stripeKey);
-
-    const results: any[] = [];
+    const results = [];
     for (const card of cardList) {
       try {
-        const num = String(card.number ?? "").replace(/[\s\-]/g, "");
-        const dateRaw = String(card.date ?? "").replace(/\//g, "").trim();
-        const cvv = String(card.cvv ?? "").trim();
-
-        let expMonth: number, expYear: number;
-        if (dateRaw.length === 4) { expMonth = parseInt(dateRaw.slice(0, 2)); expYear = 2000 + parseInt(dateRaw.slice(2)); }
-        else if (dateRaw.length === 6) { expMonth = parseInt(dateRaw.slice(0, 2)); expYear = parseInt(dateRaw.slice(2)); }
-        else throw new Error("Invalid date format (use MM/YY)");
-
-        const pm = await stripe.paymentMethods.create({ type: "card", card: { number: num, exp_month: expMonth, exp_year: expYear, cvc: cvv } } as any);
-        const pi = await stripe.paymentIntents.create({
-          amount: 80, currency: "usd", payment_method: pm.id,
-          confirm: true, capture_method: "manual", return_url: "https://nychq.cc",
-        } as any);
-        if ((pi as any).status === "requires_capture") await stripe.paymentIntents.cancel(pi.id);
-        results.push({ number: card.number, date: card.date, cvv: card.cvv, status: "approved" });
-      } catch (err: any) {
-        const errMsg = err?.raw?.message || err?.message || "Declined";
-        results.push({ number: card.number, date: card.date, cvv: card.cvv, status: "declined", error: errMsg });
+        results.push(await authorizeAndVoidCard({
+          dataDescriptor: card.dataDescriptor,
+          dataValue: card.dataValue,
+        }));
+      } catch (error: any) {
+        results.push({
+          status: "declined" as const,
+          error: error?.message || "Authorize.net request failed",
+        });
       }
     }
 
-    res.json({ results, charged: totalCost });
+    res.json({ results, charged: totalCost, balance: updatedUser.balance });
   });
 
   // === LIVE CHECK (card orders) ===
