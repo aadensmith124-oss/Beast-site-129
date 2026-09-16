@@ -4,7 +4,7 @@ import { log } from "./logger.js";
 import { CLAIM_LIMIT_PER_WINDOW, getClaimAccess } from "./reward-claim-policy.js";
 import { MAX_LICENSE_FILE_BYTES, parseLicenseKeyFile } from "./license-key-file.js";
 
-const NAME_KEYWORD = "unitedcards.lol";
+const NAME_KEYWORD = "TurtleCC.cc";
 const BROADCAST_MAX_CHARS = 1_000;
 const BROADCAST_MAX_RECIPIENTS = 500;
 const BROADCAST_COOLDOWN_MS = 60_000;
