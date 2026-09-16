@@ -69,6 +69,9 @@ export default function AdminPage() {
       {/* ── Desktop sidebar ── */}
       <aside className="hidden md:flex w-52 shrink-0 flex-col border-r border-white/10 bg-[#111]">
         <div className="px-5 py-5 border-b border-white/8">
+          <p className="text-base font-black text-white">
+            Turtle<span className="text-primary">CC</span>
+          </p>
           <p className="text-[10px] text-white/40 uppercase tracking-widest font-mono mt-0.5">Admin</p>
         </div>
 
@@ -114,7 +117,10 @@ export default function AdminPage() {
         {/* Mobile header */}
         <header className="md:hidden shrink-0 flex items-center justify-between px-4 py-3 bg-[#111] border-b border-white/10">
           <div>
-             <p className="text-sm font-black text-white">Admin</p>
+            <p className="text-sm font-black text-white">
+              Turtle<span className="text-primary">CC</span>
+              <span className="ml-1.5 text-xs font-normal text-white/40">Admin</span>
+            </p>
             <p className="text-[10px] text-white/40 font-mono">{activeLabel}</p>
           </div>
           <button

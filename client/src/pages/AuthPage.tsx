@@ -400,6 +400,9 @@ export default function AuthPage() {
   return (
     <div className="min-h-[100dvh] flex flex-col bg-[#080808] text-white">
       <main className="flex-1 w-full max-w-[360px] mx-auto px-5 pt-8 sm:pt-10">
+        <header className="mb-8 text-center">
+          <span className="text-primary font-black tracking-[0.18em] uppercase text-sm">TurtleCC</span>
+        </header>
         {tab === "login"
           ? (
             <LoginForm

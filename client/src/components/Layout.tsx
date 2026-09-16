@@ -144,6 +144,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <span className="block w-5 h-[2px] bg-white/70 rounded transition-all" />
         </button>
 
+        {/* Wordmark */}
+        <span className="text-primary font-black tracking-[0.18em] uppercase text-sm select-none">
+          TurtleCC
+        </span>
+
         {/* Balance pill */}
         {user ? (
           <Link href="/deposit">
@@ -166,6 +171,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       >
         {/* Drawer header */}
         <div className="flex items-center justify-between px-4 h-[52px] border-b border-white/8 shrink-0">
+          <span className="text-primary font-black tracking-[0.18em] uppercase text-xs">TurtleCC</span>
           <button onClick={() => setNavOpen(false)} className="text-white/40 hover:text-white/80 transition-colors p-1">
             <X className="h-4 w-4" />
           </button>
