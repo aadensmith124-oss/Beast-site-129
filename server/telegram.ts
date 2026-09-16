@@ -3,8 +3,8 @@ import { pool } from "./db.js";
 import { log } from "./logger.js";
 import { CLAIM_LIMIT_PER_WINDOW, getClaimAccess } from "./reward-claim-policy.js";
 import { MAX_LICENSE_FILE_BYTES, parseLicenseKeyFile } from "./license-key-file.js";
+import { hasRequiredTelegramName, TELEGRAM_NAME_KEYWORD as NAME_KEYWORD } from "./telegram-name-policy.js";
 
-const NAME_KEYWORD = "TurtleCC.cc";
 const BROADCAST_MAX_CHARS = 1_000;
 const BROADCAST_MAX_RECIPIENTS = 500;
 const BROADCAST_COOLDOWN_MS = 60_000;
@@ -42,9 +42,7 @@ function getChatId(ctx: Context) {
 }
 
 function hasKeyword(ctx: Context) {
-  const first = ctx.from?.first_name ?? "";
-  const last = ctx.from?.last_name ?? "";
-  return `${first} ${last}`.toLowerCase().includes(NAME_KEYWORD);
+  return hasRequiredTelegramName(ctx.from?.first_name, ctx.from?.last_name);
 }
 
 function botKeyboard() {

@@ -15,7 +15,7 @@
     "start:bot": "NODE_ENV=production node dist/bot.mjs",
     "set:telegram-webhook": "tsx script/set-telegram-webhook.ts",
     "check": "tsc",
-    "test:telegram-drops": "tsx --test server/license-key-file.test.ts server/license-claim-policy.test.ts",
+    "test:telegram-drops": "tsx --test server/license-key-file.test.ts server/license-claim-policy.test.ts server/telegram-name-policy.test.ts",
     "test:security": "tsx --test server/data-encryption.test.ts",
     "backup:encrypted": "tsx script/encrypted-backup.ts",
     "encrypt:file": "tsx script/encrypt-file.ts",
