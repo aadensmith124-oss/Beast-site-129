@@ -254,6 +254,7 @@ function ProductsTab() {
 
 // ────────── CARDS TAB ──────────
 function CardsTab() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [fullItem, setFullItem] = useState("");
@@ -261,7 +262,8 @@ function CardsTab() {
   const [selectedBaseId, setSelectedBaseId] = useState<string>("");
 
   const { data: cards = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/cards"] });
-  const { data: bases = [] } = useQuery<any[]>({ queryKey: ["/api/card-bases"] });
+  const basesQueryKey = user?.role === "admin" ? "/api/card-bases" : "/api/worker/card-bases";
+  const { data: bases = [] } = useQuery<any[]>({ queryKey: [basesQueryKey] });
 
   const previewBin = (() => {
     const tokens = fullItem.split(/[|\t:;,\s]+/).map((t: string) => t.trim()).filter(Boolean);
@@ -282,7 +284,7 @@ function CardsTab() {
       if (!res.ok) { const err = await res.json(); throw new Error(err.message || "Failed"); }
       return res.json();
     },
-    onSuccess: () => { toast({ title: "Card added" }); setFullItem(""); setPrice(""); setSelectedBaseId(""); qc.invalidateQueries({ queryKey: ["/api/cards"] }); qc.invalidateQueries({ queryKey: ["/api/card-bases"] }); },
+    onSuccess: () => { toast({ title: "Card added" }); setFullItem(""); setPrice(""); setSelectedBaseId(""); qc.invalidateQueries({ queryKey: ["/api/cards"] }); qc.invalidateQueries({ queryKey: [basesQueryKey] }); },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
