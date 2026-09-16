@@ -335,7 +335,7 @@ function CardsTab() {
             return (
               <div key={card.id} className="bg-[#111] border border-white/10 rounded-xl px-4 py-3 flex items-center justify-between" data-testid={`row-card-${card.id}`}>
                 <div className="space-y-0.5 min-w-0 flex-1">
-                  <p className="text-xs font-mono font-bold text-primary">🔥 TurtleCC | {card.hrPercent ?? 80}% HR 🔥</p>
+                  <p className="text-xs font-mono font-bold text-primary">🔥 {card.hrPercent ?? 80}% HR 🔥</p>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-mono bg-[#111]/5 border border-white/10 px-1.5 py-0.5 rounded text-white/45">{cBin}</span>
                     {card.binData?.bank && <span className="text-[10px] text-white/40 font-mono">{card.binData.bank}</span>}

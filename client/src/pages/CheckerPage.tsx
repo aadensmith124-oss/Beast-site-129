@@ -186,11 +186,6 @@ export default function CheckerPage() {
   return (
     <div className="min-h-screen bg-[#0d0d0d] pb-20">
       <div className="max-w-lg w-full mx-auto px-4 pt-6 space-y-5">
-        <div className="text-center pt-2 pb-2 space-y-1">
-          <h1 className="text-3xl sm:text-4xl font-black text-primary tracking-wide uppercase">TurtleCC</h1>
-          <p className="text-sm text-white/50">Providing high quality cards since 2026.</p>
-        </div>
-
         <div>
           <div className="flex items-center gap-2 mb-1">
             <CreditCard className="h-5 w-5 text-primary" />

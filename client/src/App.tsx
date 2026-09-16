@@ -33,7 +33,7 @@ function LoadingScreen() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background text-foreground">
       <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
-      <p className="text-sm text-muted-foreground">Connecting to TurtleCC…</p>
+      <p className="text-sm text-muted-foreground">Connecting…</p>
     </main>
   );
 }

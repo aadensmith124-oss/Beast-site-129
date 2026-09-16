@@ -46,7 +46,7 @@ export default function RedeemCodePage() {
             <Gift className="h-6 w-6 text-primary" />
           </div>
           <h1 className="text-2xl font-black uppercase tracking-wide text-white">Redeem Code</h1>
-          <p className="mt-2 text-sm text-white/45">Add balance to your TurtleCC account.</p>
+          <p className="mt-2 text-sm text-white/45">Add balance to your account.</p>
         </div>
 
         <div className="mb-4 flex items-center justify-between rounded-lg border border-white/10 bg-[#111] px-4 py-3">
@@ -111,7 +111,7 @@ export default function RedeemCodePage() {
         <div className="mt-4 flex gap-3 rounded-lg border border-white/8 bg-white/[0.02] px-4 py-3">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <p className="text-xs leading-relaxed text-white/45">
-            Balance codes are issued by TurtleCC admins. Once redeemed, the value is added directly to your account and the code cannot be used again.
+            Balance codes are issued by admins. Once redeemed, the value is added directly to your account and the code cannot be used again.
           </p>
         </div>
       </div>
