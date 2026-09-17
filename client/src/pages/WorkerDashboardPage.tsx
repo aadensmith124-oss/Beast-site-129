@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { formatDate } from "@/lib/date-utils";
 import { Briefcase, Package, ShoppingBag, Plus, Trash2, ChevronRight, Loader2, ShieldX, CreditCard, Users, DollarSign, Layers } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -475,7 +476,7 @@ function OrdersTab() {
             </div>
             <div className="flex items-center justify-between mt-1">
               <p className="text-[10px] text-white/40 font-mono">{order.user?.username || order.userId} · {order.paymentMethod || "—"}</p>
-              <p className="text-[10px] text-white/30 font-mono">{new Date(order.createdAt).toLocaleDateString()}</p>
+              <p className="text-[10px] text-white/30 font-mono">{formatDate(order.createdAt)}</p>
             </div>
           </div>
         ))}

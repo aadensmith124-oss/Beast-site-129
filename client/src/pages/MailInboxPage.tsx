@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Mail, ArrowLeft, Inbox } from "lucide-react";
 import { useVerification } from "@/hooks/use-verification";
 import { useAuth } from "@/hooks/use-auth";
+import { formatDate } from "@/lib/date-utils";
 
 export function MailInboxPage() {
   const { user, isLoading: isUserLoading } = useAuth();
@@ -55,7 +56,7 @@ export function MailInboxPage() {
             <div className="flex items-start justify-between gap-4">
               <CardTitle className="text-lg font-bold text-foreground">{selectedMail.title}</CardTitle>
               <span className="text-[10px] text-muted-foreground whitespace-nowrap pt-1">
-                {new Date(selectedMail.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                {formatDate(selectedMail.createdAt, { month: "short", day: "numeric", year: "numeric" })}
               </span>
             </div>
             <p className="text-[10px] font-bold text-muted-foreground">
@@ -115,7 +116,7 @@ export function MailInboxPage() {
                 </div>
                 <div className="flex-shrink-0 text-right">
                   <span className="text-[10px] text-muted-foreground">
-                    {new Date(mail.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    {formatDate(mail.createdAt, { month: "short", day: "numeric" })}
                   </span>
                   {!mail.isRead && (
                     <Badge className="ml-2 text-[9px] bg-primary/20 text-primary border-primary/30 px-1.5 py-0">NEW</Badge>

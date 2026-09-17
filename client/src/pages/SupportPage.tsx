@@ -15,6 +15,7 @@ import {
   TicketCheck,
   UserRound,
 } from "lucide-react";
+import { formatDate, formatTime } from "@/lib/date-utils";
 
 type Ticket = {
   id: number;
@@ -409,7 +410,7 @@ export default function SupportPage() {
               <div className="space-y-7 px-5 py-7 sm:px-7">
                 <div className="flex justify-center">
                   <span className="rounded-full bg-white/[0.08] px-4 py-2 text-sm text-white/55">
-                    {new Date(selectedTicket.createdAt).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                    {formatDate(selectedTicket.createdAt, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
                   </span>
                 </div>
 
@@ -420,7 +421,7 @@ export default function SupportPage() {
                   <div className="min-w-0 space-y-2">
                     <p className="text-sm text-white/55">
                       <strong className="text-white">You</strong>
-                      <span className="ml-2">{new Date(selectedTicket.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                      <span className="ml-2">{formatTime(selectedTicket.createdAt)}</span>
                     </p>
                     <div className="rounded-2xl rounded-tl-md bg-blue-500 px-5 py-3 text-base leading-relaxed text-white">
                       {selectedTicket.description}
@@ -431,7 +432,7 @@ export default function SupportPage() {
                 <div className="flex items-start justify-end gap-3">
                   <div className="min-w-0 max-w-[85%] space-y-2 text-right">
                     <p className="text-sm text-white/55">
-                      <span className="mr-2">{new Date(selectedTicket.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                      <span className="mr-2">{formatTime(selectedTicket.createdAt)}</span>
                       <strong className="text-white">System</strong>
                     </p>
                     <div className="rounded-2xl rounded-tr-md border border-white/10 bg-[#242424] px-5 py-3 text-left text-base leading-relaxed text-white/60">

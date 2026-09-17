@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { CircleDot, Loader2, ShieldCheck } from "lucide-react";
 import { useGames } from "@/hooks/use-games";
 import { useAuth } from "@/hooks/use-auth";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,9 @@ export default function PlinkoPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { playPlinko } = useGames();
+  const { data: features, isLoading: featuresLoading } = useQuery<{ plinko: boolean }>({
+    queryKey: ["/api/settings/features"],
+  });
   const [bet, setBet] = useState(100);
   const [result, setResult] = useState<PlinkoResult | null>(null);
 
@@ -47,6 +50,20 @@ export default function PlinkoPage() {
 
   if (!user) {
     return <div className="p-8 text-center text-muted-foreground">Please login to play.</div>;
+  }
+
+  if (featuresLoading) {
+    return <div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  }
+
+  if (features?.plinko === false) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-12 text-center">
+        <CircleDot className="mx-auto h-9 w-9 text-white/25" />
+        <p className="mt-3 text-sm font-bold text-white/70">Plinko is currently unavailable</p>
+        <p className="mt-1 text-xs text-white/40">Please check back later.</p>
+      </div>
+    );
   }
 
   const handlePlay = () => {

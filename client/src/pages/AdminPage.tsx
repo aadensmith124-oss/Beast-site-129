@@ -21,6 +21,7 @@ import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { formatDate, formatDateTime } from "@/lib/date-utils";
 
 const adminSections = [
   { id: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
@@ -466,7 +467,7 @@ function AnnouncementsSection() {
                     <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-white/40">
                       <span>{announcement.active ? "Visible" : "Hidden"}</span>
                       <span>·</span>
-                      <span>{new Date(announcement.createdAt).toLocaleString()}</span>
+                      <span>{formatDateTime(announcement.createdAt)}</span>
                       {announcement.link && (
                         <>
                           <span>·</span>
@@ -565,7 +566,7 @@ function DepositsSection() {
                   <TableCell className="text-xs font-mono font-bold">${((d.amount ?? 0) / 100).toFixed(2)}</TableCell>
                   <TableCell>{statusBadge(d.status, d.type)}</TableCell>
                   <TableCell className="text-[10px] font-mono text-white/45">{d.paymentNote ?? "—"}</TableCell>
-                  <TableCell className="text-[10px] text-white/45">{new Date(d.createdAt).toLocaleString()}</TableCell>
+                  <TableCell className="text-[10px] text-white/45">{formatDateTime(d.createdAt)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -1334,7 +1335,7 @@ function OrdersSection() {
 
           <div className="space-y-3 border-b border-white/10 pb-4">
             <div><p className="text-[10px] text-white/45 mb-0.5">Order ID</p><p className="text-xs font-mono text-white break-all">{current.orderId}</p></div>
-            <div><p className="text-[10px] text-white/45 mb-0.5">Date</p><p className="text-xs text-white/70">{new Date(current.createdAt).toLocaleString("en-US")}</p></div>
+            <div><p className="text-[10px] text-white/45 mb-0.5">Date</p><p className="text-xs text-white/70">{formatDateTime(current.createdAt)}</p></div>
             <div><p className="text-[10px] text-white/45 mb-0.5">Customer</p><p className="text-xs text-white font-bold">{current.user?.username || current.userId} · @{current.user?.telegramUsername || "—"}</p></div>
             <div><p className="text-[10px] text-white/45 mb-0.5">Payment</p><p className="text-xs text-white/70">{current.paymentMethod || "—"}</p></div>
             {current.paymentNote && (
@@ -1487,7 +1488,7 @@ function OrdersSection() {
             <span className="text-xs font-bold text-white">${(order.total / 100).toFixed(2)}</span>
             <div className="min-w-0">
               <p className="text-[11px] text-white/60 truncate font-mono">{order.user?.username ? `@${order.user.username}` : ""} <span className="text-white/45">{order.orderId?.slice(0, 10)}</span></p>
-              <p className="text-[10px] text-white/40 truncate">{order.paymentNote || order.paymentMethod || "—"} · {new Date(order.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
+              <p className="text-[10px] text-white/40 truncate">{order.paymentNote || order.paymentMethod || "—"} · {formatDate(order.createdAt, { month: "short", day: "numeric" })}</p>
             </div>
             <span className={`text-[11px] font-bold ${statusTextColor(order.status)}`}>{statusLabel(order.status)}</span>
             <ChevronRight className="h-3.5 w-3.5 text-white/30" />
@@ -1920,7 +1921,7 @@ function UsersSection() {
 
           <div className="text-[9px] text-white/30 font-mono pt-1 border-t border-white/10 space-y-0.5">
             <p>Telegram: @{selectedUser.telegramUsername || '—'}</p>
-            <p>Joined: {new Date(selectedUser.createdAt).toLocaleDateString()}</p>
+            <p>Joined: {formatDate(selectedUser.createdAt)}</p>
           </div>
         </div>
       </div>
@@ -2144,7 +2145,7 @@ function CodesSection() {
                           </span>
                         </div>
                       </div>
-                      <span className="text-[11px] text-white/40">{new Date(c.createdAt).toLocaleDateString()}</span>
+                      <span className="text-[11px] text-white/40">{formatDate(c.createdAt)}</span>
                     </div>
                   ))}
                 </div>
@@ -2249,7 +2250,7 @@ function CodesSection() {
                           {dc.type === "percent" ? `${dc.value}% off` : `$${(dc.value / 100).toFixed(2)} off`}
                           {dc.minOrder > 0 && ` · min $${(dc.minOrder / 100).toFixed(2)}`}
                           {` · ${dc.usedCount}/${dc.maxUses ?? "∞"} uses`}
-                          {dc.expiresAt && ` · expires ${new Date(dc.expiresAt).toLocaleDateString()}`}
+                          {dc.expiresAt && ` · expires ${formatDate(dc.expiresAt)}`}
                         </p>
                       </div>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -2450,7 +2451,7 @@ function IntegrationsSection() {
     { id: "cashapp", label: "CashApp", icon: <SiCashapp className="h-4 w-4 text-[#00D632]" />, bg: "bg-[#00D632]/15" },
     { id: "venmo", label: "Venmo", icon: <span className="text-white font-black text-sm">V</span>, bg: "bg-[#3D95CE]" },
     { id: "zelle", label: "Zelle", icon: <span className="text-white font-black text-sm">Z</span>, bg: "bg-[#6D1ED4]" },
-    { id: "chime", label: "Chime", icon: <span className="text-white font-black text-sm">C</span>, bg: "bg-[#ff2d2d]" },
+    { id: "chime", label: "Chime", icon: <span className="text-white font-black text-sm">C</span>, bg: "bg-[#00D632]" },
     { id: "crypto", label: "Crypto", icon: <SiBitcoin className="h-4 w-4 text-white" />, bg: "bg-primary" },
     { id: "stars", label: "Telegram Stars", icon: <Star className="h-4 w-4 text-white fill-white" />, bg: "bg-blue-500" },
   ];
@@ -2541,10 +2542,10 @@ function IntegrationsSection() {
             description="Phone number or email customers send Chime payments to."
             settingKey="chime-handle"
             placeholder="+1 (555) 000-0000"
-            color="#ff2d2d"
+            color="#00D632"
           />
-          <MinDepositCard method="chime" label="Chime" color="#ff2d2d" />
-          <FeeSettingCard method="chime" label="Chime" color="#ff2d2d" />
+          <MinDepositCard method="chime" label="Chime" color="#00D632" />
+          <FeeSettingCard method="chime" label="Chime" color="#00D632" />
         </div>
       </div>
 
@@ -2598,12 +2599,12 @@ function IntegrationsSection() {
 
 function FeatureTogglesCard() {
   const { toast } = useToast();
-  const { data: features, isLoading: featuresLoading } = useQuery<{ checker: boolean; reseller: boolean; ranks: boolean; logs: boolean; cards: boolean }>({
+  const { data: features, isLoading: featuresLoading } = useQuery<{ checker: boolean; reseller: boolean; ranks: boolean; logs: boolean; cards: boolean; plinko: boolean }>({
     queryKey: ["/api/settings/features"],
   });
 
   const toggleFeature = useMutation({
-    mutationFn: async (body: { checker?: boolean; reseller?: boolean; ranks?: boolean; logs?: boolean; cards?: boolean }) => {
+    mutationFn: async (body: { checker?: boolean; reseller?: boolean; ranks?: boolean; logs?: boolean; cards?: boolean; plinko?: boolean }) => {
       const res = await apiRequest("POST", "/api/admin/settings/features", body);
       return res.json();
     },
@@ -2618,6 +2619,7 @@ function FeatureTogglesCard() {
     { key: "ranks" as const, label: "Ranks", desc: "Show/hide the Ranks page and nav link" },
     { key: "logs" as const, label: "Logs Shop", desc: "Show/hide the Logs shop page and nav link" },
     { key: "cards" as const, label: "Cards", desc: "Show/hide the Cards page and nav link" },
+    { key: "plinko" as const, label: "Plinko", desc: "Show/hide the Plinko game and nav link" },
     { key: "checker" as const, label: "Card Checker", desc: "Show/hide the Checker page and nav link" },
     { key: "reseller" as const, label: "Become Reseller", desc: "Show/hide the Reseller application page" },
   ];
@@ -2654,7 +2656,7 @@ function FeatureTogglesCard() {
 
 function methodMeta(method: string) {
   if (method === "Venmo") return { color: "#3D95CE", label: "Venmo", icon: "V" };
-  if (method === "Chime") return { color: "#ff2d2d", label: "Chime", icon: "C" };
+  if (method === "Chime") return { color: "#00D632", label: "Chime", icon: "C" };
   if (method === "Zelle") return { color: "#9B59E8", label: "Zelle", icon: "Z" };
   return { color: "#00D632", label: "CashApp", icon: "$" };
 }
@@ -2753,7 +2755,7 @@ function CashAppSection() {
 
           <div className="space-y-3 border-b border-white/10 pb-4">
             <div><p className="text-[10px] text-white/45 mb-0.5">Customer</p><p className="text-xs text-white font-bold">{current.user?.username || current.userId}</p></div>
-            <div><p className="text-[10px] text-white/45 mb-0.5">Date</p><p className="text-xs text-white/70">{new Date(current.createdAt).toLocaleString("en-US")}</p></div>
+            <div><p className="text-[10px] text-white/45 mb-0.5">Date</p><p className="text-xs text-white/70">{formatDateTime(current.createdAt)}</p></div>
             {current.paymentNote && (
               <div>
                 <p className="text-[10px] text-white/45 mb-0.5">Payment Note</p>
@@ -2831,7 +2833,7 @@ function CashAppSection() {
           { key: "all", label: "All", count: pendingOrders.length, color: "text-white/70" },
           { key: "CashApp", label: "CashApp", count: cashappCount, color: "text-[#00D632]" },
           { key: "Venmo", label: "Venmo", count: venmoCount, color: "text-[#3D95CE]" },
-          { key: "Chime", label: "Chime", count: chimeCount, color: "text-[#ff2d2d]" },
+          { key: "Chime", label: "Chime", count: chimeCount, color: "text-[#00D632]" },
           { key: "Zelle", label: "Zelle", count: zelleCount, color: "text-[#9B59E8]" },
         ].map(({ key, label, count, color }) => (
           <button
@@ -2892,7 +2894,7 @@ function CashAppSection() {
                     </div>
                     <p className="text-sm font-black text-white">${(order.total / 100).toFixed(2)}</p>
                     {order.paymentNote && <p className="text-[10px] font-mono mt-0.5" style={{ color: `${meta.color}80` }}>{order.paymentNote}</p>}
-                    <p className="text-[10px] text-white/40">{order.user?.username || order.userId} · {new Date(order.createdAt).toLocaleDateString()}</p>
+                    <p className="text-[10px] text-white/40">{order.user?.username || order.userId} · {formatDate(order.createdAt)}</p>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-white/30 flex-shrink-0" />
@@ -3781,7 +3783,7 @@ function SellersSection() {
               </div>
               <div className="shrink-0 flex items-center gap-2">
                 {statusBadge(seller.status)}
-                <span className="text-[10px] text-white/40">{new Date(seller.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                 <span className="text-[10px] text-white/40">{formatDate(seller.createdAt, { month: "short", day: "numeric" })}</span>
               </div>
             </div>
           ))}
@@ -3941,7 +3943,7 @@ function SupportSection() {
                 </div>
                 <p className="text-xs text-white/40 font-mono">Order: {ticket.orderId}</p>
               </div>
-              <p className="text-[10px] text-white/30 shrink-0">{new Date(ticket.createdAt).toLocaleDateString()}</p>
+              <p className="text-[10px] text-white/30 shrink-0">{formatDate(ticket.createdAt)}</p>
             </div>
 
             <div className="bg-white/[0.03] rounded p-3 space-y-1.5 border border-white/5">

@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { formatDateTime } from "@/lib/date-utils";
 
 function statusLabel(s: string) {
   if (s === "pending") return "pending";
@@ -165,7 +166,7 @@ export default function OrderDetailPageNew() {
         {activeTab === "info" && (
           <div className="space-y-5">
             <InfoRow label="ID" value={<span className="font-mono break-all text-sm text-white">{order.orderId}</span>} />
-            <InfoRow label="Creation date" value={new Date(order.createdAt).toLocaleString("en-US")} />
+            <InfoRow label="Creation date" value={formatDateTime(order.createdAt)} />
             <InfoRow label="Reason" value="cart" />
             <InfoRow label="Expected amount" value={`$${(expected / 100).toFixed(2)}`} />
             <InfoRow label="Paid amount" value={`$${(paid / 100).toFixed(2)}`} />

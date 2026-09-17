@@ -7,6 +7,7 @@ import { Download, Loader2, RefreshCw } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { formatDate } from "@/lib/date-utils";
 
 type TabType = "all" | "cards" | "ach" | "logs";
 
@@ -16,18 +17,6 @@ function getTier(totalDepositsCents: number): { label: string; discount: string 
   if (dollars >= 200) return { label: "Silver", discount: "10% off" };
   if (dollars >= 50) return { label: "Bronze", discount: "5% off" };
   return { label: "Starter", discount: "0% off" };
-}
-
-function formatDateTime(date: Date): string {
-  return date.toLocaleString("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
 }
 
 function isAchOrder(order: any): boolean {
@@ -303,7 +292,7 @@ export default function OrdersPage() {
                       {order.items?.length ?? 0} item{(order.items?.length ?? 0) !== 1 ? "s" : ""}
                     </p>
                     <p className="text-[10px] text-white/30 font-mono">
-                      {order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-US") : ""}
+                      {formatDate(order.createdAt, undefined, "")}
                     </p>
                   </div>
                   <div className="text-right space-y-1 flex-shrink-0">

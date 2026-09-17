@@ -15,6 +15,7 @@ import { SiBitcoin } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 import { CryptoPaymentModal } from "@/components/CryptoPaymentModal";
 import { queryClient } from "@/lib/queryClient";
+import { formatDate, formatDateTime, formatTime } from "@/lib/date-utils";
 
 export default function ProfilePage() {
   const { user, isLoading, logout } = useAuth();
@@ -113,7 +114,7 @@ function DashboardTab({ user, logout }: { user: any; logout: () => void }) {
         </div>
         <div>
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Member Since</p>
-          <p className="text-sm text-foreground">{new Date(user.createdAt).toLocaleDateString()}</p>
+          <p className="text-sm text-foreground">{formatDate(user.createdAt)}</p>
         </div>
         <button 
           onClick={logout}
@@ -217,7 +218,7 @@ function SettingsTab({ user }: { user: any }) {
           <div className="flex items-center gap-3 text-sm">
             <Calendar className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">Joined:</span>
-            <span className="text-foreground">{new Date(user.createdAt).toLocaleDateString()} {new Date(user.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <span className="text-foreground">{formatDate(user.createdAt)} {formatTime(user.createdAt)}</span>
           </div>
           
           <div className="flex items-center gap-3 pt-4">
@@ -374,7 +375,7 @@ function OrdersTab() {
                           }`} />
                           {(order.status as string) === 'fulfilled' || (order.status as string) === 'delivering' ? 'Fulfilled' : (order.status as string) === 'paid' ? 'Paid' : (order.status as string) === 'replaced' ? 'Replaced' : (order.status as string) === 'refunded' ? 'Refunded' : (order.status as string) === 'pending' ? 'Pending' : (order.status as string) === 'unpaid' || (order.status as string) === 'waiting_payment' ? 'Unpaid' : order.status}
                           <br />
-                          <span className="text-xs text-muted-foreground">on {new Date(order.createdAt).toLocaleDateString()}</span>
+                          <span className="text-xs text-muted-foreground">on {formatDate(order.createdAt)}</span>
                         </span>
                       </td>
                       <td className="p-4 text-right">
@@ -487,7 +488,7 @@ function OrderDetailsSheet({ order, open, onOpenChange }: { order: any; open: bo
               </div>
               <div className="space-y-1">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase">Creation date</p>
-                <p className="text-xs">{new Date(order.createdAt).toLocaleString()}</p>
+                <p className="text-xs">{formatDateTime(order.createdAt)}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase">Reason</p>

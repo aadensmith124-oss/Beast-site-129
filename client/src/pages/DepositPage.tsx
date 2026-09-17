@@ -8,6 +8,7 @@ import {
   RefreshCw, ExternalLink, Send, Minus, Plus, ChevronDown
 } from "lucide-react";
 import { SiBitcoin, SiCashapp } from "react-icons/si";
+import { formatDate } from "@/lib/date-utils";
 
 type ManualMethod = "cashapp" | "venmo" | "zelle" | "chime";
 type Method = "crypto" | ManualMethod;
@@ -52,7 +53,7 @@ function methodColor(type: string) {
   if (type === "cashapp") return "#00D632";
   if (type === "venmo") return "#3D95CE";
   if (type === "zelle") return "#9B59E8";
-  if (type === "chime") return "#ff2d2d";
+  if (type === "chime") return "#00D632";
   return "#F7931A";
 }
 function methodLabel(type: string) {
@@ -106,7 +107,7 @@ function DepositRow({ deposit }: { deposit: Deposit }) {
             </span>
             <StatusBadge status={deposit.status} />
           </div>
-          <p className="text-[9px] text-white/20 font-mono">{methodLabel(deposit.type)} · {new Date(deposit.createdAt).toLocaleDateString()}</p>
+          <p className="text-[9px] text-white/20 font-mono">{methodLabel(deposit.type)} · {formatDate(deposit.createdAt)}</p>
         </div>
       </div>
       {deposit.checkoutUrl && !isCredited && (
@@ -275,7 +276,7 @@ export default function DepositPage() {
     ...(cashappEnabled ? [{ id: "cashapp", label: "CashApp", sub: "instant", Icon: SiCashapp, color: "#00D632", fee: feeLabel(manualMethods?.cashapp?.fee) }] : []),
     ...(venmoEnabled ? [{ id: "venmo", label: "Venmo", sub: "instant", Icon: (props: any) => <LetterIcon {...props} letter="V" />, color: "#3D95CE", fee: feeLabel(manualMethods?.venmo?.fee) }] : []),
     ...(zelleEnabled ? [{ id: "zelle", label: "Zelle", sub: "instant", Icon: (props: any) => <LetterIcon {...props} letter="Z" />, color: "#9B59E8", fee: feeLabel(manualMethods?.zelle?.fee) }] : []),
-    ...(chimeEnabled ? [{ id: "chime", label: "Chime", sub: "instant", Icon: (props: any) => <LetterIcon {...props} letter="C" />, color: "#ff2d2d", fee: feeLabel(manualMethods?.chime?.fee) }] : []),
+    ...(chimeEnabled ? [{ id: "chime", label: "Chime", sub: "instant", Icon: (props: any) => <LetterIcon {...props} letter="C" />, color: "#00D632", fee: feeLabel(manualMethods?.chime?.fee) }] : []),
   ];
 
   const isSelectedCrypto = selectedOption === "crypto";

@@ -673,6 +673,9 @@ export async function registerRoutes(
   // the client and have a theoretical return of approximately 96.2%.
   app.post(api.games.plinko.path, gameLimiter, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    if (await storage.getSetting("feature_plinko", "true") === "false") {
+      return res.status(404).json({ message: "Plinko is currently unavailable." });
+    }
 
     const bet = Number(req.body?.betAmount);
     if (!Number.isFinite(bet) || !Number.isInteger(bet) || bet < 1) {
@@ -2752,19 +2755,21 @@ export async function registerRoutes(
     const ranks = await storage.getSetting("feature_ranks", "true");
     const logs = await storage.getSetting("feature_logs", "true");
     const cards = await storage.getSetting("feature_cards", "true");
-    res.json({ checker: checker !== "false", reseller: reseller !== "false", ranks: ranks !== "false", logs: logs !== "false", cards: cards !== "false" });
+    const plinko = await storage.getSetting("feature_plinko", "true");
+    res.json({ checker: checker !== "false", reseller: reseller !== "false", ranks: ranks !== "false", logs: logs !== "false", cards: cards !== "false", plinko: plinko !== "false" });
   });
 
   app.post("/api/admin/settings/features", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    const { checker, reseller, ranks, logs, cards } = req.body;
+    const { checker, reseller, ranks, logs, cards, plinko } = req.body;
     if (checker !== undefined) await storage.setSetting("feature_checker", checker ? "true" : "false");
     if (reseller !== undefined) await storage.setSetting("feature_reseller", reseller ? "true" : "false");
     if (ranks !== undefined) await storage.setSetting("feature_ranks", ranks ? "true" : "false");
     if (logs !== undefined) await storage.setSetting("feature_logs", logs ? "true" : "false");
     if (cards !== undefined) await storage.setSetting("feature_cards", cards ? "true" : "false");
+    if (plinko !== undefined) await storage.setSetting("feature_plinko", plinko ? "true" : "false");
     res.json({ ok: true });
   });
 

@@ -39,7 +39,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const balanceDollars = user ? (user.balance / 100).toFixed(2) : "0.00";
 
-  const { data: features } = useQuery<{ checker: boolean; reseller: boolean; ranks: boolean; logs: boolean; cards: boolean }>({
+  const { data: features } = useQuery<{ checker: boolean; reseller: boolean; ranks: boolean; logs: boolean; cards: boolean; plinko: boolean }>({
     queryKey: ["/api/settings/features"],
     staleTime: 30000,
   });
@@ -84,9 +84,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
       links: [
         ...(features?.logs !== false ? [{ href: "/shop", label: "Logs", icon: FileText }] : []),
         { href: "/", label: "Cards", icon: CreditCard },
-        { href: "/games/plinko", label: "Plinko", icon: CircleDot },
         ...(features?.checker !== false ? [{ href: "/checker", label: "Checker", icon: Layers }] : []),
         ...(features?.reseller !== false ? [{ href: "/become-reseller", label: "Become Seller", icon: BookOpen }] : []),
+      ],
+    },
+    {
+      label: "Games",
+      links: [
+        ...(features?.plinko !== false ? [{ href: "/games/plinko", label: "Plinko", icon: CircleDot }] : []),
       ],
     },
     ...((user?.role === "admin" || (user as any)?.isWorker) ? [{
@@ -181,7 +186,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Grouped nav links */}
         <nav className="flex-1 overflow-y-auto px-3 py-3">
-          {navSections.map(section => (
+          {navSections.filter(section => section.links.length > 0).map(section => (
             <div key={section.label} className="mb-5 last:mb-0">
               <p className="px-3 mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-white/25">
                 {section.label}

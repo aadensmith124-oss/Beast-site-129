@@ -10,6 +10,7 @@ import { useLocation, useSearch } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { formatDate as safeFormatDate } from "@/lib/date-utils";
 
 const RANKS = [
   { key: "newbie",  label: "Newbie",  emoji: "🌱", color: "text-white/45",  bar: "#ffffff40", bg: "bg-[#0d0d0d]",        discount: 0,  threshold: 0       },
@@ -139,7 +140,7 @@ export default function ProfilePage() {
               </div>
               <div className="px-4 py-3 flex justify-between items-center">
                 <p className="text-[11px] text-white/40">Member Since</p>
-                <p className="text-xs text-white/60">{new Date(user.createdAt).toLocaleDateString()}</p>
+                <p className="text-xs text-white/60">{safeFormatDate(user.createdAt)}</p>
               </div>
             </div>
             <div className="px-4 py-3 border-t border-white/10">
@@ -352,7 +353,7 @@ function statusColor(s: string) {
 }
 
 function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "numeric" });
+  return safeFormatDate(d, { month: "numeric", day: "numeric", year: "numeric" });
 }
 
 function SettingsTab({ user, onUpdate }: { user: any; onUpdate: () => void }) {
